@@ -16,6 +16,8 @@ export interface Series extends Signal {
   id: number
   added_at: number
   removed_at: number | null
+  /** an environmental reading the server keeps in every recording while the sensor reports: cannot be removed */
+  locked?: boolean
 }
 
 export interface Recording {

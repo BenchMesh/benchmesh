@@ -16,6 +16,8 @@ export interface ChartSeries {
   color: string
   points: Point[]
   removed: boolean
+  /** added by the server and kept in every recording (environmental readings): cannot be removed */
+  locked: boolean
 }
 
 /** Colours and font of the chart, read from the skin's tokens. */
@@ -105,7 +107,7 @@ export function chartSeries(recording: Recording, data: RecordingData | null, li
     if (live && lv) {
       live.t.forEach((tt, i) => { if (tt > lastHist && (t.length === 0 || tt > t[t.length - 1])) { t.push(tt); v.push(lv[i]) } })
     }
-    return { id: s.id, label: s.label, unit: s.unit, color: seriesColor(recording, s.id, palette), points: withGaps(t, v, intervalMs), removed: s.removed_at != null }
+    return { id: s.id, label: s.label, unit: s.unit, color: seriesColor(recording, s.id, palette), points: withGaps(t, v, intervalMs), removed: s.removed_at != null, locked: s.locked === true }
   }).filter((c) => !c.removed || c.points.some((p) => p[1] != null))
 }
 
@@ -120,8 +122,19 @@ export function axisLayout(n: number): { position: 'left' | 'right'; offset: num
   return Array.from({ length: n }, (_, i) => ({ position: i % 2 === 0 ? 'left' : 'right', offset: Math.floor(i / 2) * AXIS_W }))
 }
 
-/** Value text for axes, legends and the tooltip. */
-export const valueText = (v: number | null | undefined, unit: string) => siText(v, unit, 4)
+/** Units shown without an SI prefix: already prefixed or not SI (environmental readings: 1013.2 hPa, never 1.013 khPa). */
+const PLAIN_UNITS = new Set(['°C', '%RH', 'hPa', '%'])
+
+/** Value text for legends and the tooltip. */
+export function valueText(v: number | null | undefined, unit: string): string {
+  if (!PLAIN_UNITS.has(unit) || v == null || !Number.isFinite(v)) return siText(v, unit, 4)
+  return `${axisText(v, unit)} ${unit}`
+}
+
+/** Axis label of a series' value: the number only. */
+export function axisText(v: number, unit: string): string {
+  return PLAIN_UNITS.has(unit) ? String(Number(v.toPrecision(Math.max(4, Math.floor(Math.log10(Math.abs(v) || 1)) + 2)))) : siText(v, '', 4).trim()
+}
 
 const pad2 = (n: number) => String(n).padStart(2, '0')
 /** Local time `HH:MM:SS` (with the date when `withDate`). */
@@ -199,7 +212,7 @@ export function buildOption({ series, theme, hidden, min, max, zoom }: OptionInp
       nameTextStyle: { ...text, color: s.color, fontWeight: 'bold' },
       axisLine: { show: true, lineStyle: { color: s.color, width: 1.5 } },
       axisTick: { show: true, lineStyle: { color: s.color } },
-      axisLabel: { ...text, color: s.color, formatter: (v: number) => valueText(v, '').trim() },
+      axisLabel: { ...text, color: s.color, formatter: (v: number) => axisText(v, s.unit) },
       splitLine: { show: i === 0, lineStyle: { color: theme.edge, opacity: 0.45 } },
     })) : [{ type: 'value', axisLabel: text, splitLine: { lineStyle: { color: theme.edge, opacity: 0.45 } } }],
     dataZoom: zoom?.enabled ? [

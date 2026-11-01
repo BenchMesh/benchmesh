@@ -20,6 +20,7 @@ pub mod config;
 pub mod extension;
 pub mod ai;
 pub mod devices;
+pub mod environment;
 pub mod guard;
 pub mod mcp;
 pub mod openapi;
@@ -121,6 +122,7 @@ fn routes(state: &S) -> Router<S> {
         .route("/usbtmc-devices", get(usbtmc_devices))
         .route("/usbtmc-devices/driver", post(install_usbtmc_driver))
         .route("/ws/registry", get(ws_registry))
+        .route("/environment", get(environment::get_environment))
         .route("/metrics", get(metrics_summary))
         .route("/metrics/{id}", get(metrics_device))
         .route("/ws/metrics", get(ws_metrics))

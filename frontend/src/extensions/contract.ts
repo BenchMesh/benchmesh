@@ -15,7 +15,7 @@ export interface Stopping {
   hint: string
 }
 
-/** A group on an Instruments tab (System, About, Online). */
+/** A group on an Instruments tab (System, About, Online, Sensors). */
 export interface GroupProps {
   /** a view-only remote session: show, change nothing */
   viewOnly: boolean
@@ -51,7 +51,7 @@ export interface RecordingView {
 }
 
 /** The Instruments tabs a distribution adds groups to. */
-export type ExtensionTab = 'system' | 'about' | 'online'
+export type ExtensionTab = 'system' | 'about' | 'online' | 'sensors'
 
 /** What a title-bar badge or a top-bar status may do besides showing itself. */
 export interface OpenTabProps {
@@ -99,10 +99,20 @@ export interface UiExtensions {
   aboutGroups: ComponentType<GroupProps>[]
   /** Groups of Instruments - Online (services of benchmesh.online); with none, the tab is not shown. */
   onlineGroups: ComponentType<GroupProps>[]
+  /**
+   * Groups of Instruments - Sensors (sensors next to the instruments, e.g. the lab's environment); with none, the tab
+   * is not shown. The server side of an environmental sensor is `Extension::environment`.
+   */
+  sensorsGroups: ComponentType<GroupProps>[]
   /** Statuses after API and Readings in the top bar (draw a `StatusPill`, or nothing). */
   topBarStatus: ComponentType<OpenTabProps>[]
   /** Views of a recording besides the chart; with none, the dock and the drawer show no switch. */
   recordingViews: RecordingView[]
+  /**
+   * Readouts on the right of the title bar, before Arrange (the official build: the lab's environment and the time);
+   * each draws nothing when it has nothing to show. A press inside a button does not move the window.
+   */
+  titleReadouts: ComponentType<OpenTabProps>[]
   /** Small notices after the version in the title bar (e.g. "Update available"); each draws nothing when it has nothing to say. */
   titleBadges: ComponentType<OpenTabProps>[]
   /** Buttons in every instrument panel's header, before Park (not while arranging, not in a view-only session). */

@@ -37,6 +37,8 @@ html, body { background: var(--kit-ground); }
 .bench-title__version:hover, .bench-title__version:focus-visible { color: var(--kit-ink-2); text-decoration: underline; }
 .bench-title__build { font-style: normal; letter-spacing: .04em; }
 .bench-title__drag { flex: 1; min-width: 12px; }
+/* a distribution's readouts (extensions.titleReadouts), right-aligned before Arrange */
+.bench-title__readouts { display: flex; align-items: center; gap: 14px; padding-right: 10px; min-width: 0; }
 /* the app's own title-bar controls (VS Code pattern), apart from the window controls */
 .bench-title__app { display: flex; align-items: center; gap: 4px; padding-right: 14px; }
 .bench-title__tool {
@@ -48,6 +50,9 @@ html, body { background: var(--kit-ground); }
 .bench-title__tool:hover:not(:disabled) { background: var(--kit-ctl); border-color: var(--kit-panel-edge); color: var(--kit-ink); }
 .bench-title__tool[aria-pressed="true"] { color: var(--kit-accent); border-color: var(--kit-accent); background: color-mix(in srgb, var(--kit-accent) 10%, transparent); }
 .bench-title__tool:disabled { opacity: .45; cursor: not-allowed; }
+.bench-title__swap { display: inline-grid; }
+.bench-title__swap > span { grid-area: 1 / 1; text-align: center; }
+.bench-title__swap > [data-on="false"] { visibility: hidden; }
 .bench-title__win { display: flex; align-items: stretch; margin-left: 6px; border-left: 1px solid color-mix(in srgb, var(--kit-panel-edge) 70%, transparent); }
 .bench-title__win button { width: 46px; display: grid; place-items: center; background: none; border: 0; color: var(--kit-ink); }
 .bench-title__win svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1; shape-rendering: crispEdges; }

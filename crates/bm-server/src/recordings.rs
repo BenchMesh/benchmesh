@@ -6,6 +6,10 @@
 //! recordings share one time domain. Values come from the live registry (no extra instrument
 //! traffic); a value older than [`MAX_AGE`] or of a disconnected device is a gap, never a
 //! repeated stale value. One tick is written in one transaction.
+//!
+//! An environmental sensor (`environment.rs`) adds its readings to every running or paused
+//! recording while it reports, also to one already running when it appears; those series are
+//! `locked` (cannot be removed).
 
 use std::collections::{BTreeMap, HashMap};
 use std::sync::{Arc, Mutex, Weak};
@@ -19,12 +23,13 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post};
 use axum::{Json, Router};
 use bm_devicedef::ValueKind;
-use bm_store::{now_ms, Recording, Series, Signal, Store, StoreError};
+use bm_store::{now_ms, Recording, Series, Signal, State as RecState, Store, StoreError};
 use serde_json::{json, Map, Value};
 use tokio::sync::broadcast;
 
 use crate::config::str_field;
 use crate::devices::Devices;
+use crate::environment::{self, Environment};
 use crate::{detail, S};
 
 /// Registry values older than this are not recorded.
@@ -33,6 +38,8 @@ pub const MAX_AGE: Duration = Duration::from_secs(5);
 pub struct Recordings {
     pub store: Arc<Store>,
     devices: Arc<Devices>,
+    /// The lab's environmental sensor, if the distribution has one.
+    environment: Option<Arc<dyn Environment>>,
     /// WebSocket messages (JSON text) for every `/ws/recordings` client.
     tx: broadcast::Sender<String>,
     sampler: Mutex<Option<tokio::task::JoinHandle<()>>>,
@@ -41,14 +48,14 @@ pub struct Recordings {
 impl Recordings {
     /// Stops recordings left running by a previous run and starts the sampler (must be
     /// called inside a tokio runtime).
-    pub fn new(store: Arc<Store>, devices: Arc<Devices>) -> Arc<Self> {
+    pub fn new(store: Arc<Store>, devices: Arc<Devices>, environment: Option<Arc<dyn Environment>>) -> Arc<Self> {
         match store.close_orphans() {
             Ok(0) => {}
             Ok(n) => eprintln!("stopped {n} recording(s) left running by a previous run"),
             Err(e) => eprintln!("recordings: {e}"),
         }
         let (tx, _) = broadcast::channel(1024);
-        let rec = Arc::new(Recordings { store, devices, tx, sampler: Mutex::new(None) });
+        let rec = Arc::new(Recordings { store, devices, environment, tx, sampler: Mutex::new(None) });
         let task = tokio::spawn(sampler(Arc::downgrade(&rec)));
         *rec.sampler.lock().unwrap() = Some(task);
         rec
@@ -68,6 +75,8 @@ impl Recordings {
 
     /// One sampler tick at `t` (ms, multiple of 1000).
     async fn tick(&self, t: i64) {
+        let env = environment::fresh(self.environment.as_deref(), t).map(|(_, r)| r).unwrap_or_default();
+        self.add_environment(&env, None).await;
         let store = self.store.clone();
         let due = match tokio::task::spawn_blocking(move || store.due_series(t)).await {
             Ok(Ok(d)) => d,
@@ -83,10 +92,14 @@ impl Recordings {
             let reg = self.devices.registry.lock().unwrap();
             for d in &due {
                 let s = &d.signal;
-                let v = u8::try_from(s.channel)
+                let v = if is_environment(s) {
+                    env.iter().find(|r| r.field == s.field).map(|r| r.value)
+                } else {
+                    u8::try_from(s.channel)
                     .ok()
                     .and_then(|ch| reg.fresh_value(&s.device_id, &s.class, ch, &s.field, MAX_AGE))
-                    .and_then(numeric);
+                        .and_then(numeric)
+                };
                 if let Some(v) = v {
                     samples.push((d.series_id, v));
                 }
@@ -126,8 +139,60 @@ impl Recordings {
         .await
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
+        self.add_environment_now(id).await;
         self.announce_id(id).await;
         Ok(id)
+    }
+
+    /// Adds the readings the sensor reports now to a new recording (before its first tick).
+    async fn add_environment_now(&self, id: i64) {
+        if let Some((_, env)) = environment::fresh(self.environment.as_deref(), now_ms()) {
+            self.add_environment(&env, Some(id)).await;
+        }
+    }
+
+    /// Gives every running or paused recording (or only `only`) a series for each of these
+    /// readings it lacks, and announces the recordings changed.
+    async fn add_environment(&self, env: &[environment::Reading], only: Option<i64>) {
+        if env.is_empty() {
+            return;
+        }
+        let fields: Vec<&'static str> = env.iter().map(|r| r.field).collect();
+        let store = self.store.clone();
+        let changed = tokio::task::spawn_blocking(move || -> Result<Vec<i64>, StoreError> {
+            let t = now_ms();
+            let mut changed = Vec::new();
+            for r in store.list_recordings()? {
+                if r.state == RecState::Stopped || only.is_some_and(|id| id != r.id) {
+                    continue;
+                }
+                let series = store.series_of(r.id)?;
+                let mut added = false;
+                for f in &fields {
+                    if series.iter().any(|s| s.removed_at.is_none() && is_environment(&s.signal) && s.signal.field == *f) {
+                        continue;
+                    }
+                    let signal = Signal { device_id: environment::DEVICE_ID.into(), class: environment::CLASS.into(), channel: environment::CHANNEL, field: f.to_string() };
+                    let unit = environment::field(f).map_or("", |(_, u)| u);
+                    store.add_series(r.id, &signal, &environment::label(f), unit, t)?;
+                    added = true;
+                }
+                if added {
+                    changed.push(r.id);
+                }
+            }
+            Ok(changed)
+        })
+        .await;
+        match changed {
+            Ok(Ok(ids)) => {
+                for id in ids {
+                    self.announce_id(id).await;
+                }
+            }
+            Ok(Err(e)) => eprintln!("recordings: environmental readings: {e}"),
+            Err(_) => {}
+        }
     }
 
     /// Stop a recording (automation runs); a recording already stopped is fine.
@@ -180,6 +245,11 @@ impl Recordings {
     }
 }
 
+/// A series of the environmental sensor (added by the server, cannot be removed).
+fn is_environment(s: &Signal) -> bool {
+    s.device_id == environment::DEVICE_ID
+}
+
 /// Label of a series added without one. Multi-channel classes name the channel: two scope
 /// `FREQ` columns must be distinguishable in an export.
 fn default_label(device_name: &str, channels: u8, channel: i64, field: &str) -> String {
@@ -218,7 +288,8 @@ async fn sampler(rec: Weak<Recordings>) {
 
 fn series_json(s: &Series) -> Value {
     json!({"id": s.id, "device_id": s.signal.device_id, "class": s.signal.class, "channel": s.signal.channel,
-           "field": s.signal.field, "label": s.label, "unit": s.unit, "added_at": s.added_at, "removed_at": s.removed_at})
+           "field": s.signal.field, "label": s.label, "unit": s.unit, "added_at": s.added_at, "removed_at": s.removed_at,
+           "locked": is_environment(&s.signal)})
 }
 
 fn recording_json(store: &Store, r: &Recording) -> Result<Value, StoreError> {
@@ -349,6 +420,7 @@ async fn create(State(s): State<S>, body: Bytes) -> Result<Response, ApiError> {
         .filter(|i| (1..=3600).contains(i))
         .ok_or_else(|| invalid("`interval_s` must be an integer 1-3600"))?;
     let r = db(&s, move |st| st.create_recording(&name, &description, interval, now_ms())).await?;
+    s.recordings.add_environment_now(r.id).await;
     changed(&s, r.id, StatusCode::CREATED).await
 }
 
@@ -379,6 +451,10 @@ async fn add_series(State(s): State<S>, Path(id): Path<String>, body: Bytes) -> 
 async fn remove_series(State(s): State<S>, Path((id, sid)): Path<(String, String)>) -> Result<Response, ApiError> {
     let id = rec_id(&id)?;
     let sid: i64 = sid.parse().map_err(|_| ApiError(StatusCode::NOT_FOUND, format!("Series {sid} not found")))?;
+    let series = db(&s, move |st| st.series_of(id)).await?;
+    if series.iter().any(|x| x.id == sid && is_environment(&x.signal)) {
+        return Err(ApiError(StatusCode::CONFLICT, "Environmental readings stay in every recording".into()));
+    }
     db(&s, move |st| st.end_series(id, sid, now_ms())).await?;
     announce(&s, id).await?;
     Ok(StatusCode::NO_CONTENT.into_response())

@@ -88,6 +88,10 @@ impl Drop for Fixture {
 }
 
 fn fixture(name: &str) -> Fixture {
+    fixture_with(name, Default::default())
+}
+
+fn fixture_with(name: &str, extensions: bm_server::extension::Extensions) -> Fixture {
     let dir = std::env::temp_dir().join(format!("bm-server-test-{name}-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("ui")).unwrap();
     std::fs::write(dir.join("ui/index.html"), "<html>BenchMesh UI</html>").unwrap();
@@ -106,7 +110,7 @@ fn fixture(name: &str) -> Fixture {
     for e in cfg.load().unwrap() {
         devices.start(e).unwrap();
     }
-    let recordings = bm_server::recordings::Recordings::new(Arc::new(bm_store::Store::in_memory().unwrap()), devices.clone());
+    let recordings = bm_server::recordings::Recordings::new(Arc::new(bm_store::Store::in_memory().unwrap()), devices.clone(), extensions.environment());
     let automation = bm_server::automation::Automation::new(devices.clone(), recordings.clone(), None);
     let state = Arc::new(AppState {
         devices,
@@ -121,7 +125,7 @@ fn fixture(name: &str) -> Fixture {
         remote: Default::default(),
         scpi: Default::default(),
         system: Default::default(),
-        extensions: Default::default(),
+        extensions,
     });
     let f = Fixture { state, dir };
     // wait until both devices are connected and polled
@@ -1127,4 +1131,127 @@ async fn an_instrument_in_use_by_the_running_flow_cannot_be_parked() {
     assert_eq!(code, StatusCode::CONFLICT);
     assert_eq!(v["detail"], "unpark t1 first: the flow uses it");
     assert_eq!(v["parked"], json!(["t1"]));
+}
+
+// ---- environmental sensor ------------------------------------------------------------
+
+/// A sensor whose readings the test sets (`None`: not attached).
+#[derive(Default)]
+struct FakeSensor(Mutex<Option<(f64, Option<f64>)>>);
+
+impl bm_server::environment::Environment for FakeSensor {
+    fn snapshot(&self) -> Option<bm_server::environment::Snapshot> {
+        use bm_server::environment::{Reading, Snapshot};
+        let (t, h) = (*self.0.lock().unwrap())?;
+        let at = bm_store::now_ms();
+        let mut readings = vec![Reading { field: "TEMP", value: t, at }, Reading { field: "PRES", value: 1013.2, at }];
+        if let Some(h) = h {
+            readings.push(Reading { field: "HUM", value: h, at });
+        }
+        Some(Snapshot { source: "Fake (BME280)".into(), readings })
+    }
+}
+
+struct SensorExtension(Arc<FakeSensor>);
+
+impl bm_server::extension::Extension for SensorExtension {
+    fn name(&self) -> &'static str {
+        "sensor"
+    }
+    fn routes(&self) -> axum::Router<bm_server::S> {
+        axum::Router::new()
+    }
+    fn api(&self) -> Vec<bm_server::extension::ApiRoute> {
+        Vec::new()
+    }
+    fn environment(&self) -> Option<Arc<dyn bm_server::environment::Environment>> {
+        Some(self.0.clone())
+    }
+}
+
+fn sensor_fixture(name: &str, sensor: Arc<FakeSensor>) -> Fixture {
+    let ext = bm_server::extension::Extensions { distribution: "test", list: vec![Arc::new(SensorExtension(sensor))] };
+    fixture_with(name, ext)
+}
+
+fn fields(r: &Value) -> Vec<(String, bool)> {
+    let mut v: Vec<(String, bool)> = r["series"].as_array().unwrap().iter()
+        .filter(|s| s["device_id"] == "environment")
+        .map(|s| (s["field"].as_str().unwrap().to_string(), s["locked"].as_bool().unwrap()))
+        .collect();
+    v.sort();
+    v
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn environmental_readings_are_recorded_in_every_recording_and_locked() {
+    let sensor = Arc::new(FakeSensor::default());
+    *sensor.0.lock().unwrap() = Some((23.5, Some(41.0)));
+    let f = sensor_fixture("env", sensor.clone());
+
+    let (code, env, _) = call(&f, "GET", "/environment", None, None).await;
+    assert_eq!(code, StatusCode::OK);
+    assert_eq!((env["present"].clone(), env["source"].clone()), (json!(true), json!("Fake (BME280)")));
+    assert_eq!(env["readings"][0]["unit"], "°C");
+
+    // a new recording has the sensor's readings from the start, labelled, with units, locked
+    let (code, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "env", "interval_s": 1})), None).await;
+    assert_eq!(code, StatusCode::CREATED, "{r}");
+    assert_eq!(fields(&r), [("HUM".into(), true), ("PRES".into(), true), ("TEMP".into(), true)]);
+    let temp = r["series"].as_array().unwrap().iter().find(|s| s["field"] == "TEMP").unwrap().clone();
+    assert_eq!((temp["label"].clone(), temp["unit"].clone(), temp["class"].clone()), (json!("Environment · Temperature"), json!("°C"), json!("ENV")));
+    let id = r["id"].as_i64().unwrap();
+    let tid = temp["id"].as_i64().unwrap();
+
+    // they cannot be removed; an instrument reading still can
+    let (code, v, _) = call(&f, "DELETE", &format!("/recordings/{id}/series/{tid}"), None, None).await;
+    assert_eq!(code, StatusCode::CONFLICT, "{v}");
+    let (code, s1, _) = add_series(&f, id, json!({"device_id": "t1", "class": "PSU", "channel": 1, "field": "VOUT"})).await;
+    assert_eq!(code, StatusCode::CREATED, "{s1}");
+    assert_eq!(s1["locked"], false);
+    assert_eq!(call(&f, "DELETE", &format!("/recordings/{id}/series/{}", s1["id"]), None, None).await.0, StatusCode::NO_CONTENT);
+    // and they are not addressable as a device
+    assert_eq!(add_series(&f, id, json!({"device_id": "environment", "class": "ENV", "channel": 1, "field": "TEMP"})).await.0, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // samples on the common time domain, in the CSV with their units
+    let d = wait_data(&f, id, "temperature samples", |d| d["series"].as_array().unwrap().iter().any(|s| s["id"] == tid && !s["t"].as_array().unwrap().is_empty())).await;
+    let s = d["series"].as_array().unwrap().iter().find(|s| s["id"] == tid).unwrap();
+    assert_eq!(s["v"][0], 23.5);
+    assert!(ts(s).iter().all(|t| t % 1000 == 0));
+    let (code, csv, _) = call(&f, "GET", &format!("/recordings/{id}/export"), None, None).await;
+    assert_eq!(code, StatusCode::OK);
+    assert!(csv.as_str().unwrap().lines().next().unwrap().contains("Environment · Temperature [°C]"), "{csv}");
+
+    // a config entry may not take the id
+    let (code, v, _) = call(&f, "POST", "/devices", Some(json!({"id": "environment", "driver": "tenma_72", "transport": "serial", "port": "/dev/null"})), None).await;
+    assert_eq!(code, StatusCode::UNPROCESSABLE_ENTITY, "{v}");
+    assert!(v["detail"].as_str().unwrap().contains("reserved"), "{v}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn without_a_sensor_recordings_get_no_environmental_readings_until_one_reports() {
+    let sensor = Arc::new(FakeSensor::default());
+    let f = sensor_fixture("env-late", sensor.clone());
+    assert_eq!(call(&f, "GET", "/environment", None, None).await.1["present"], false);
+
+    let (_, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "late", "interval_s": 1})), None).await;
+    let id = r["id"].as_i64().unwrap();
+    assert_eq!(fields(&r), Vec::<(String, bool)>::new());
+    let (_, stopped, _) = call(&f, "POST", "/recordings", Some(json!({"name": "done", "interval_s": 1})), None).await;
+    let sid = stopped["id"].as_i64().unwrap();
+    assert_eq!(call(&f, "POST", &format!("/recordings/{sid}/stop"), None, None).await.0, StatusCode::OK);
+
+    // a BMP280 (no humidity) is plugged in: the running recording gets its readings, a stopped one not
+    *sensor.0.lock().unwrap() = Some((21.0, None));
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let r = recording_of(&f, id).await;
+        if !fields(&r).is_empty() {
+            assert_eq!(fields(&r), [("PRES".into(), true), ("TEMP".into(), true)]);
+            break;
+        }
+        assert!(Instant::now() < deadline, "the sensor's readings were not added: {r}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    assert_eq!(fields(&recording_of(&f, sid).await), Vec::<(String, bool)>::new());
 }

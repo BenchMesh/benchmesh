@@ -23,13 +23,15 @@ pub fn of(method: &Method, path: &str) -> Scope {
     match segs.as_slice() {
         [""] | ["status"] | ["version"] | ["catalog"] | ["docs"] | ["redoc"] | ["openapi.json"] | ["openapi.yaml"] => Scope::Instruments,
         ["ui", ..] | ["instruments", ..] | ["drivers", ..] | ["metrics", ..] => Scope::Instruments,
-        ["ws", "registry"] | ["ws", "metrics"] | ["ai", "context"] | ["ai", "system-prompt"] => Scope::Instruments,
+        ["ws", "registry"] | ["ws", "metrics"] | ["environment"] | ["ai", "context"] | ["ai", "system-prompt"] => Scope::Instruments,
         ["remote", "session"] | ["remote", "logout"] | ["remote", "login"] => Scope::Instruments,
         ["devices", _, "wire"] | ["devices", _, "park"] => Scope::Instruments,
         ["config"] | ["devices", ..] | ["serial-ports"] => Scope::Configuration,
         ["usbtmc-devices"] if method == Method::GET => Scope::Configuration,
         ["recordings", ..] | ["ws", "recordings"] => Scope::Recordings,
         ["system", ..] => Scope::System,
+        // settings of sensors a distribution adds (the official build: the environmental sensor)
+        ["sensors", ..] => Scope::Configuration,
         ["automation", "mcp"] => Scope::Admin,
         ["automation", "assistant"] if method != Method::GET => Scope::Admin,
         ["automation", ..] => Scope::Automation,
@@ -58,6 +60,7 @@ mod tests {
         assert_eq!(s("GET", "/usbtmc-devices"), Scope::Configuration);
         assert_eq!(s("POST", "/usbtmc-devices/driver"), Scope::Admin);
         assert_eq!(s("GET", "/ws/recordings"), Scope::Recordings);
+        assert_eq!(s("GET", "/environment"), Scope::Instruments, "the lab's readings next to the instruments'");
         assert_eq!(s("POST", "/automation/run"), Scope::Automation);
         assert_eq!(s("GET", "/automation/assistant"), Scope::Automation);
         assert_eq!(s("PUT", "/automation/assistant"), Scope::Admin);
@@ -72,6 +75,7 @@ mod tests {
         assert_eq!(s("GET", "/system"), Scope::System);
         assert_eq!(s("POST", "/system/restart"), Scope::System, "headless, the browser is the only way to restart");
         assert_eq!(s("PUT", "/system/autostart"), Scope::System);
+        assert_eq!(s("PUT", "/sensors/environmental"), Scope::Configuration);
         assert_eq!(s("GET", "/something-new"), Scope::Admin, "unknown routes are local-only");
     }
 

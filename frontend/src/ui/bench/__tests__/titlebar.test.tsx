@@ -44,6 +44,16 @@ describe('TitleBar', () => {
     expect(win.startDragging).not.toHaveBeenCalled()
   })
 
+  it('shows the readouts a distribution adds on the right, just before Arrange; none: no readout area', () => {
+    const { container } = bar({ readouts: <span data-testid="readout">22.8 °C</span> })
+    const area = container.querySelector('.bench-title__readouts')!
+    expect(area.contains(screen.getByTestId('readout'))).toBe(true)
+    expect(area.nextElementSibling!.contains(screen.getByRole('button', { name: /Arrange/ }))).toBe(true)
+    expect(area.previousElementSibling!.className).toBe('bench-title__drag')
+    const { container: plain } = bar()
+    expect(plain.querySelector('.bench-title__readouts')).toBeNull()
+  })
+
   it('a community build: "v<version> community"; none while the version is unknown', () => {
     const { unmount } = bar({ version: { official: false, version: '0.1.16', display: 'BenchMesh 0.1.16 (community build)' } })
     expect(screen.getByRole('button', { name: 'v0.1.16 community' })).toBeInTheDocument()
@@ -67,6 +77,8 @@ describe('TitleBar', () => {
   it('Arrange shows Done while arranging and is disabled without instruments', () => {
     const { rerender } = bar({ arranging: true })
     expect(screen.getByRole('button', { name: 'Done' })).toHaveAttribute('aria-pressed', 'true')
+    // both words stay in the button (the hidden one keeps its width): readouts beside it do not move
+    expect(screen.getByRole('button', { name: 'Done' }).querySelector('[data-on="false"]')!.textContent).toBe('Arrange')
     rerender(<TitleBar onAbout={() => {}} arranging={false} canArrange={false} onArrange={() => {}} />)
     expect(screen.getByRole('button', { name: 'Arrange' })).toBeDisabled()
   })

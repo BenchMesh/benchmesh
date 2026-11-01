@@ -135,7 +135,7 @@ pub fn start(opts: ServerOptions) -> Result<RunningServer, String> {
     let rt = tokio::runtime::Builder::new_multi_thread().enable_all().thread_name("bm-http").build().map_err(|e| e.to_string())?;
     let recordings = {
         let _guard = rt.enter(); // recording tasks are spawned on this runtime
-        crate::recordings::Recordings::new(Arc::new(store), devices.clone())
+        crate::recordings::Recordings::new(Arc::new(store), devices.clone(), opts.extensions.environment())
     };
     let state = Arc::new(AppState {
         devices: devices.clone(),

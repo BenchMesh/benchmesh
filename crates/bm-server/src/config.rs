@@ -57,6 +57,9 @@ pub fn validate_entry(d: &DeviceEntry, known_drivers: &[String], finder: Option<
     if id.is_empty() || id.len() > 50 || !id.chars().all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c)) {
         return Err(format!("invalid device id {id:?} (1-50 chars: letters, digits, - _ .)"));
     }
+    if id == crate::environment::DEVICE_ID {
+        return Err(format!("device id {id:?} is reserved for the environmental sensor"));
+    }
     let driver = str_field(d, "driver").unwrap_or_default();
     if !known_drivers.iter().any(|k| k == driver) {
         return Err(format!("unknown driver {driver:?}; available: {known_drivers:?}"));

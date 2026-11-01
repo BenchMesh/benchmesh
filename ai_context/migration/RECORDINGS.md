@@ -32,6 +32,18 @@ recording at any time; recordings may run for hours.
 - On server start, recordings still `recording`/`paused` from a previous run are set `stopped`
   (`stopped_at` = last sample time, else start time).
 
+## Environmental readings
+
+A distribution may add an environmental sensor (`Extension::environment`, `crates/bm-server/src/environment.rs`;
+the official build: BenchMesh Sensors, a BME280 / BMP280 on a CH341A USB-I2C adapter). While it reports (a reading
+newer than 5 s), every recording that is `recording` or `paused` has one series per reading it reports - signal
+`{device_id: "environment", class: "ENV", channel: 1, field: TEMP | HUM | PRES}`, labels `Environment · Temperature`
+/ `Humidity` / `Pressure`, units `°C` / `%RH` / `hPa` - added when the recording is created and, for a sensor that
+appears later, at the next tick. Without a sensor nothing is added. These series carry `"locked": true` (every other
+series `false`): `DELETE` answers 409, and the UI offers no removal. The sampler takes their values from the sensor
+with the same freshness rule; the CSV export has their columns like any other. `environment` is not a valid config
+entry id. `GET /environment` → `{present, source, readings: [{field, label, unit, value, at}]}`.
+
 ## Storage (`bm-store`, `~/.benchmesh/recordings.db`; simulation: in memory)
 
 The database and its `-wal` / `-shm` files are private to the user (0600 on Unix, set at every

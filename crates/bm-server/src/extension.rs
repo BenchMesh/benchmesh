@@ -2,7 +2,7 @@
 //!
 //! The open-source build has no extensions: `benchmesh-server` and the desktop app built from this
 //! repository pass `Extensions::default()`. The official distribution adds its own (app updates,
-//! online services, finding instruments) at build time through the `benchmesh-extensions` crate,
+//! online services, finding instruments, environmental sensors) at build time through the `benchmesh-extensions` crate,
 //! which the desktop app asks for them. An extension adds routes to the same API: they are served behind the same
 //! cross-site guard and remote gate, and their remote scope follows their path like every other
 //! route (`remote::scope`; an unclassified path is local-only).
@@ -18,6 +18,7 @@ use bm_transport::Endpoint;
 use serde_json::Value;
 
 use crate::config::DeviceEntry;
+use crate::environment::Environment;
 use crate::S;
 
 /// The distribution name of a build without extensions (`GET /version` `distribution`).
@@ -56,6 +57,11 @@ pub trait Extension: Send + Sync {
     fn api(&self) -> Vec<ApiRoute>;
     /// Finds instruments by who they are; the open-source build has none.
     fn finder(&self) -> Option<Arc<dyn Finder>> {
+        None
+    }
+    /// Reports the lab's temperature, humidity and pressure (`environment.rs`): every running
+    /// recording records them while it does; the open-source build has none.
+    fn environment(&self) -> Option<Arc<dyn Environment>> {
         None
     }
 }
@@ -102,5 +108,10 @@ impl Extensions {
     /// The finder of the first extension that has one.
     pub fn finder(&self) -> Option<Arc<dyn Finder>> {
         self.list.iter().find_map(|e| e.finder())
+    }
+
+    /// The environmental sensor of the first extension that has one.
+    pub fn environment(&self) -> Option<Arc<dyn Environment>> {
+        self.list.iter().find_map(|e| e.environment())
     }
 }

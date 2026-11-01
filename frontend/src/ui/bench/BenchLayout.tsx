@@ -120,7 +120,8 @@ function BenchShell({ instruments, registry, apiBase, loading, error, wsDiag, on
       <div ref={top} className="bench-head">
         <TitleBar version={version} onAbout={() => setDrawer('about')}
           arranging={arranging} canArrange={instruments.length > 0} onArrange={() => setArranging((a) => !a)}
-          badges={extensions.titleBadges.map((Badge, i) => <Badge key={i} open={openInstruments} />)} />
+          badges={extensions.titleBadges.map((Badge, i) => <Badge key={i} open={openInstruments} />)}
+          readouts={extensions.titleReadouts.length ? extensions.titleReadouts.map((Readout, i) => <Readout key={i} open={openInstruments} />) : undefined} />
         <header className="bench-top">
           <StatusPill {...apiStatus(loading, error)} />
           <StatusPill {...readingsStatus(wsDiag.state)} />

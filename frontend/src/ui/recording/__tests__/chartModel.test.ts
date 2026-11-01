@@ -11,9 +11,9 @@ describe('chart data shaping', () => {
       { position: 'left', offset: AXIS_W }, { position: 'right', offset: AXIS_W },
     ])
     const s = [
-      { id: 1, label: 'PSU · VOUT', unit: 'V', color: '#a', points: [[T0, 4.9], [T0 + 1000, 5]] as [number, number][], removed: false },
-      { id: 2, label: 'LOAD · VIN', unit: 'V', color: '#b', points: [[T0, 118], [T0 + 1000, 120]] as [number, number][], removed: false },
-      { id: 3, label: 'LOAD · IIN', unit: 'A', color: '#c', points: [], removed: false },
+      { id: 1, label: 'PSU · VOUT', unit: 'V', color: '#a', points: [[T0, 4.9], [T0 + 1000, 5]] as [number, number][], removed: false, locked: false },
+      { id: 2, label: 'LOAD · VIN', unit: 'V', color: '#b', points: [[T0, 118], [T0 + 1000, 120]] as [number, number][], removed: false, locked: false },
+      { id: 3, label: 'LOAD · IIN', unit: 'A', color: '#c', points: [], removed: false, locked: false },
     ]
     const o = buildOption({ series: s, theme })
     expect(o.yAxis).toHaveLength(3)
@@ -33,8 +33,8 @@ describe('chart data shaping', () => {
 
   it('the tooltip lists every shown series at the time', () => {
     const s = [
-      { id: 1, label: 'A', unit: 'V', color: '#a', points: [[T0, 4.9]] as [number, number][], removed: false },
-      { id: 2, label: 'B', unit: 'A', color: '#b', points: [[T0, null]] as [number, null][], removed: false },
+      { id: 1, label: 'A', unit: 'V', color: '#a', points: [[T0, 4.9]] as [number, number][], removed: false, locked: false },
+      { id: 2, label: 'B', unit: 'A', color: '#b', points: [[T0, null]] as [number, null][], removed: false, locked: false },
     ]
     const html: string = buildOption({ series: s, theme }).tooltip.formatter([
       { axisValue: T0, seriesId: 's1', value: [T0, 4.9] }, { axisValue: T0, seriesId: 's2', value: [T0, null] },
@@ -75,4 +75,16 @@ describe('chart data shaping', () => {
     expect(latest(cs[0].points)).toBe(3)
     expect(latest([[0, 1], [1, null]])).toBe(1)
   })
+
+  it('shows environmental units without an SI prefix', async () => {
+    const { valueText, axisText } = await import('../chartModel')
+    expect(valueText(1013.25, 'hPa')).toBe('1013.3 hPa')
+    expect(valueText(22.86, '°C')).toBe('22.86 °C')
+    expect(valueText(41.18, '%RH')).toBe('41.18 %RH')
+    expect(axisText(1013.4, 'hPa')).toBe('1013.4')
+    expect(axisText(22.5, '°C')).toBe('22.5')
+    expect(valueText(1500, 'V')).toBe('1.5 kV')
+    expect(axisText(1500, 'V')).toBe('1.5 k')
+  })
 })
+

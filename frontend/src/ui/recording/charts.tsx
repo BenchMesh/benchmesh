@@ -70,7 +70,7 @@ export function SeriesLegend({ series, hidden, onToggle, onRemove, removing }: {
               <span className="rec-legend__label">{s.label}</span>
               <span className="rec-legend__value">{valueText(latest(s.points), s.unit)}</span>
             </button>
-            {onRemove && !s.removed && (
+            {onRemove && !s.removed && !s.locked && (
               <button type="button" className="bench-icon rec-legend__remove" aria-label={`Remove ${s.label}`} title="Stop recording this reading (its data is kept)"
                 disabled={removing?.has(s.id)} aria-busy={removing?.has(s.id) || undefined} data-confirm={removing?.has(s.id) ? 'waiting' : undefined}
                 onClick={() => onRemove(s.id)}>×</button>
