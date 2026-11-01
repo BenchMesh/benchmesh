@@ -33,7 +33,7 @@ Python/Electron/Node-RED system it replaced is kept only in git (tag `legacy-pyt
 | `bm-server` | axum REST API, WebSockets, recordings v2 (one whole-second sampler from the registry, `/ws/recordings`; an environmental sensor a distribution adds - `environment.rs`, `GET /environment` - is recorded in every recording as locked series, a series per sensor (channel) and reading, in the label and unit the sensor gives it; a unit change ends the series and starts one in the new unit), metrics, OpenAPI, virtual SCPI instruments (`scpi/`), UI; `benchmesh-server` binary |
 | `bm-store` | recordings database v2 (SQLite/WAL `~/.benchmesh/recordings.db`, 0600 with its journal: recordings, series, samples; contract `ai_context/migration/RECORDINGS.md`) |
 | `benchmesh-extensions` | what a distribution adds to the app: stub here (adds nothing), replaced by the official build (`ai_context/OPEN_CORE.md`; not a default member) |
-| `bm-probe` | bench tool: `verify` (read-only) / `get` / `set` / `screenshot` against real instruments |
+| `bm-probe` | bench tool: `verify` (read-only; a read the definition refuses in the instrument's state now - a `requires`, e.g. a channel not displayed - is REFUSED, not FAIL) / `get` / `set` / `screenshot` against real instruments |
 | `benchmesh-app` | Tauri desktop app: embedded `bm-server` + webview (not a default member) |
 
 ```bash

@@ -173,6 +173,7 @@ fn verify(cat: &Catalog, devs: &[&Configured], polls: usize, screenshots: bool) 
                     match e.get(class, op, ch) {
                         Ok(Output::Value(v)) => println!("  GET {class}/{op} ch{ch}: {} ({} ms)", show(&v), ms(t)),
                         Ok(Output::Bytes(b)) => println!("  GET {class}/{op} ch{ch}: {} bytes ({} ms)", b.len(), ms(t)),
+                        Err(err) if state_refusal(&err) => println!("  REFUSED GET {class}/{op} ch{ch}: {err} (the instrument's state now, not a fault)"),
                         Err(err) => {
                             println!("  FAIL GET {class}/{op} ch{ch}: {err}");
                             ok = false;
@@ -184,6 +185,13 @@ fn verify(cat: &Catalog, devs: &[&Configured], polls: usize, screenshots: bool) 
         e.disconnect();
     }
     ok
+}
+
+/// A read the definition itself declines in the instrument's state now (a `requires`, e.g. the
+/// waveform of a channel that is not displayed): no fault of the definition, the check passes. A
+/// Modbus exception (the register is wrong for this model) is one.
+fn state_refusal(e: &bm_driver::Error) -> bool {
+    matches!(e, bm_driver::Error::Refused(m) if !m.starts_with("modbus exception"))
 }
 
 fn main() -> ExitCode {
@@ -262,5 +270,19 @@ fn main() -> ExitCode {
             eprintln!("error: {e}");
             ExitCode::FAILURE
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bm_driver::Error;
+
+    #[test]
+    fn a_requires_refusal_is_the_instruments_state_not_a_failure() {
+        assert!(state_refusal(&Error::Refused("channel is not displayed".into())));
+        assert!(!state_refusal(&Error::Refused("modbus exception 2 (illegal data address)".into())));
+        assert!(!state_refusal(&Error::Timeout { partial: Vec::new() }));
+        assert!(!state_refusal(&Error::Parse("x".into())));
     }
 }
