@@ -243,6 +243,10 @@ impl Transport for Vxi11Transport {
             }
         }
     }
+
+    fn reads_on_request(&self) -> bool {
+        true
+    }
 }
 
 impl Drop for Vxi11Transport {

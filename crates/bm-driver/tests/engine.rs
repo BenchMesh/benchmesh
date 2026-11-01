@@ -777,3 +777,44 @@ fn a_job_runs_alone_on_the_engine_and_is_refused_without_a_link() {
     assert!(matches!(c.with_engine(Duration::from_secs(2), |e| e.idn.clone()), Err(Error::Refused(m)) if m.contains("parked")));
     h.stop();
 }
+
+/// A message link (USBTMC, VXI-11): one reply per query, and a read with no query outstanding is
+/// counted (the DHO804 hangs on one).
+struct MessageLink {
+    asked: bool,
+    stray: Arc<Mutex<usize>>,
+}
+
+impl Transport for MessageLink {
+    fn write(&mut self, data: &[u8]) -> std::io::Result<()> {
+        self.asked = data.contains(&b'?');
+        Ok(())
+    }
+
+    fn read(&mut self, _timeout: Duration) -> std::io::Result<Vec<u8>> {
+        if !std::mem::take(&mut self.asked) {
+            *self.stray.lock().unwrap() += 1;
+            return Ok(Vec::new());
+        }
+        Ok(b"RIGOL TECHNOLOGIES,DHO804,DHO8A0000000001,00.01.03\n".to_vec())
+    }
+
+    fn reads_on_request(&self) -> bool {
+        true
+    }
+}
+
+#[test]
+fn a_message_link_is_read_only_after_a_query() {
+    let stray = Arc::new(Mutex::new(0));
+    let mut e = Engine::open(def("rigol_dho800"), Box::new(MessageLink { asked: false, stray: stray.clone() })).unwrap();
+    // what the diagnostic does: take what is waiting, then raw queries with a listen and an idle
+    assert!(e.take_pending(Duration::from_millis(50)).unwrap().is_empty());
+    let r = e.raw(&e.tx_frame("*IDN?"), Duration::from_millis(200), Duration::from_millis(20)).unwrap();
+    assert!(r.bytes.starts_with(b"RIGOL"), "{r:?}");
+    // a query that never answers: one read for it, none after
+    let r = e.raw(&e.tx_frame(":NOPE"), Duration::from_millis(50), Duration::from_millis(20)).unwrap();
+    assert!(r.bytes.is_empty());
+    assert!(e.take_pending(Duration::from_millis(50)).unwrap().is_empty());
+    assert_eq!(*stray.lock().unwrap(), 1, "only the unanswered command's own read went out without a query");
+}

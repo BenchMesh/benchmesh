@@ -173,6 +173,10 @@ impl<P: Pipe> Transport for Session<P> {
     fn take_notes(&mut self) -> Vec<String> {
         std::mem::take(&mut self.notes)
     }
+
+    fn reads_on_request(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

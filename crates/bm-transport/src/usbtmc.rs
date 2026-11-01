@@ -135,6 +135,10 @@ impl Transport for UsbTmcTransport {
     fn take_notes(&mut self) -> Vec<String> {
         std::mem::take(&mut self.notes)
     }
+
+    fn reads_on_request(&self) -> bool {
+        true
+    }
 }
 
 fn request_on(file: &File, nr: u64) -> io::Result<()> {

@@ -221,6 +221,10 @@ impl Transport for VisaTransport {
             }
         }
     }
+
+    fn reads_on_request(&self) -> bool {
+        true
+    }
 }
 
 #[cfg(test)]

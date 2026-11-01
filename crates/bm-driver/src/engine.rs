@@ -31,6 +31,13 @@ pub trait Transport: Send {
     fn take_notes(&mut self) -> Vec<String> {
         Vec::new()
     }
+    /// A read asks the instrument for its next message (USBTMC `REQUEST_DEV_DEP_MSG_IN`,
+    /// VXI-11 `device_read`) instead of taking bytes off a line. Such a transport is read only
+    /// right after a query: a read request with nothing to answer can hang the instrument until
+    /// it is switched off and on (the Rigol DHO804, 2026-10-21 and the 0.1.19 diagnostic).
+    fn reads_on_request(&self) -> bool {
+        false
+    }
 }
 
 /// Result of an operation.
@@ -568,8 +575,11 @@ impl Engine {
             }
             let wait = if out.bytes.is_empty() { deadline - now } else { idle.min(deadline - now) };
             let chunk = self.t.read(wait).map_err(|e| Error::Io(e.to_string()))?;
+            // a message link answers a query with one message (or nothing within the listen):
+            // asking again would request one nobody queried
+            let once = self.t.reads_on_request();
             if chunk.is_empty() {
-                if !out.bytes.is_empty() {
+                if !out.bytes.is_empty() || once {
                     break;
                 }
                 continue;
@@ -578,6 +588,9 @@ impl Engine {
             out.first_ms.get_or_insert(at);
             out.last_ms = Some(at);
             out.bytes.extend_from_slice(&chunk);
+            if once {
+                break;
+            }
         }
         self.next_write = Instant::now() + ms(self.def.framing.timing.min_gap_ms);
         Ok(out)
@@ -588,6 +601,10 @@ impl Engine {
     /// message the instrument sent by itself. Taken, they cannot shift onto the next reply.
     pub fn take_pending(&mut self, quiet: Duration) -> Result<Vec<u8>, Error> {
         let mut out = Vec::new();
+        // a message link has nothing waiting that a read could take without asking for it
+        if self.t.reads_on_request() {
+            return Ok(out);
+        }
         let limit = Instant::now() + Duration::from_secs(2);
         while Instant::now() < limit {
             let chunk = self.t.read(quiet).map_err(|e| {

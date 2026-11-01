@@ -84,6 +84,10 @@ impl Transport for Held {
     fn take_notes(&mut self) -> Vec<String> {
         self.inner.take_notes()
     }
+
+    fn reads_on_request(&self) -> bool {
+        self.inner.reads_on_request()
+    }
 }
 
 /// The kind of port a definition's link is found on.
