@@ -9,6 +9,7 @@ const ext = vi.hoisted(() => ({ extensions: { root: [], systemGroups: [], aboutG
 vi.mock('../../../extensions', () => ext)
 
 import { SettingsView } from '../SettingsView'
+import { RequestLogProvider } from '../../RequestLogContext'
 
 const version = (distribution: string) => {
   global.fetch = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).endsWith('/version') ? { version: '0.1.17', distribution } : []), { status: 200, headers: { 'Content-Type': 'application/json' } })) as any
@@ -54,5 +55,19 @@ describe('Instruments tabs', () => {
     render(<SettingsView apiBase="" onConfigUpdated={() => {}} initialTab="sensors" />)
     expect(tabs().indexOf('sensors')).toBe(tabs().indexOf('metrics') + 1)
     expect(screen.getByRole('group', { name: 'Environmental sensors' }).textContent).toBe('control')
+  })
+
+  it('Log and API are tabs: the request log, the API reference; the drawer is told which tab is shown', async () => {
+    version('community')
+    vi.spyOn(system, 'getSystem').mockRejectedValue(new Error('not needed'))
+    const shown: string[] = []
+    render(<RequestLogProvider><SettingsView apiBase="" onConfigUpdated={() => {}} onTabChange={(t) => shown.push(t)} /></RequestLogProvider>)
+    expect(tabs()).toEqual(expect.arrayContaining(['log', 'api']))
+    expect(tabs().indexOf('log')).toBe(tabs().indexOf('api') - 1)
+    fireEvent.click(screen.getByTestId('settings-tab-log'))
+    expect(screen.getByRole('region', { name: 'Request log' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('settings-tab-api'))
+    expect(await screen.findByRole('region', { name: 'API reference' })).toBeTruthy()
+    expect(shown).toEqual(['log', 'api'])
   })
 })

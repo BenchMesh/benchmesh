@@ -8,14 +8,16 @@
  * - Metrics: how busy each instrument's connection is
  * - Connectors: virtual SCPI instruments for VISA programs and the Python package (only in the app on this computer)
  * - Sensors: sensors a distribution adds (the official build: Environmental sensors; none: no tab)
+ * - Log: the request log (what this window asked the API)
+ * - API: the API reference (endpoints, Send, curl); the drawer is wide while it is open
  * - Online: services of benchmesh.online a distribution adds (the official build: the BenchMesh account; none: no tab)
  * - System: the computer's resources; restart, shut down and start with the computer when headless
  * - Remote access: control the bench from other computers (only in the app on this computer)
  * - About: this BenchMesh (build, version in the official build, its updates)
  */
 
-import React, { useState, useEffect } from 'react';
-import { VscTools, VscGear, VscChecklist, VscRemote, VscPulse, VscPlug, VscServer, VscGlobe, VscInfo, VscBeaker } from 'react-icons/vsc';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
+import { VscTools, VscGear, VscChecklist, VscRemote, VscPulse, VscPlug, VscServer, VscGlobe, VscInfo, VscBeaker, VscOutput, VscSymbolMethod } from 'react-icons/vsc';
 import { InstrumentConfigView } from './InstrumentConfigView';
 import { SupportedView } from './SupportedView';
 import { MetricsView } from './MetricsView';
@@ -29,9 +31,12 @@ import { SystemView } from '../system/SystemView';
 import { AboutTab } from '../about/AboutTab';
 import { OnlineTab, hasOnlineTab } from '../online/OnlineTab';
 import { SensorsTab, hasSensorsTab } from '../sensors/SensorsTab';
+import { LogsPanel } from './LogsPanel';
+
+const ApiReference = lazy(() => import('../apidocs/ApiReference').then((m) => ({ default: m.ApiReference })));
 import './settings.css';
 
-export type SettingsTab = 'instruments' | 'supported' | 'miscellaneous' | 'metrics' | 'connectors' | 'sensors' | 'online' | 'system' | 'remote' | 'about';
+export type SettingsTab = 'instruments' | 'supported' | 'miscellaneous' | 'metrics' | 'connectors' | 'sensors' | 'log' | 'api' | 'online' | 'system' | 'remote' | 'about';
 
 interface SettingsViewProps {
   apiBase: string;
@@ -42,6 +47,8 @@ interface SettingsViewProps {
   instruments?: Instrument[];
   /** The tab shown when the drawer opens. */
   initialTab?: SettingsTab;
+  /** Another tab was chosen (the drawer widens for the API reference). */
+  onTabChange?: (tab: SettingsTab) => void;
 }
 
 // History retention options in days
@@ -55,8 +62,9 @@ const RETENTION_OPTIONS = [
 const DEFAULT_RETENTION_DAYS = 3;
 const STORAGE_KEY_RETENTION = 'benchmesh:historyRetentionDays';
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ apiBase, onConfigUpdated, autoAddInstrument, onAutoAddComplete, instruments, initialTab = 'instruments' }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ apiBase, onConfigUpdated, autoAddInstrument, onAutoAddComplete, instruments, initialTab = 'instruments', onTabChange }) => {
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  const choose = (tab: SettingsTab) => { setActiveTab(tab); onTabChange?.(tab); };
   const [historyRetention, setHistoryRetention] = useState<number>(() => {
     // Load from localStorage on mount
     try {
@@ -105,6 +113,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ apiBase, onConfigUpd
     { id: 'metrics', label: 'Metrics', icon: VscPulse },
     ...(hasSensorsTab() ? [{ id: 'sensors', label: 'Sensors', icon: VscBeaker }] : []),
     ...(local ? [{ id: 'connectors', label: 'Connectors', icon: VscPlug }] : []),
+    { id: 'log', label: 'Log', icon: VscOutput },
+    { id: 'api', label: 'API', icon: VscSymbolMethod },
     ...(hasOnlineTab() ? [{ id: 'online', label: 'Online', icon: VscGlobe }] : []),
     { id: 'system', label: 'System', icon: VscServer },
     ...(remoteSettings ? [{ id: 'remote', label: 'Remote access', icon: VscRemote }] : []),
@@ -121,7 +131,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ apiBase, onConfigUpd
             <button
               key={tab.id}
               className={`settings-view__tab ${activeTab === tab.id ? 'settings-view__tab--active' : ''}`}
-              onClick={() => setActiveTab(tab.id as SettingsTab)}
+              onClick={() => choose(tab.id as SettingsTab)}
               data-testid={`settings-tab-${tab.id}`}
             >
               <Icon size={16} />
@@ -191,6 +201,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ apiBase, onConfigUpd
         {activeTab === 'connectors' && local && <ConnectorsView />}
 
         {activeTab === 'sensors' && hasSensorsTab() && <SensorsTab />}
+
+        {activeTab === 'log' && <section aria-label="Request log"><LogsPanel /></section>}
+
+        {activeTab === 'api' && (
+          <section aria-label="API reference">
+            <Suspense fallback={<span className="bench-hint">Loading…</span>}><ApiReference apiBase={apiBase} instruments={instruments} /></Suspense>
+          </section>
+        )}
 
         {activeTab === 'online' && hasOnlineTab() && <OnlineTab />}
 

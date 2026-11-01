@@ -85,7 +85,7 @@ System does after Restart (`frontend/src/ui/system/comeback.tsx`).
 
 Remote control sessions hold the `system` scope (headless, the browser is the only way to look
 after the computer); view-only sessions read `GET /system` only. Restart, shut down and install
-are not sent from the API reference drawer (`x-no-try`).
+are not sent from the API reference (Instruments - API, `x-no-try`).
 
 ## Raspberry Pi
 

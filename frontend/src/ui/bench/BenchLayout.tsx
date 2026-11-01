@@ -3,7 +3,6 @@ import '../kit/kit.css'
 import './bench.css'
 import { Instrument } from '../types'
 import { SettingsView, type SettingsTab } from '../drawers/SettingsView'
-import { LogsPanel } from '../drawers/LogsPanel'
 import { Rack } from './Rack'
 import { ParkingStrip } from './ParkingStrip'
 import { isParked } from './parking'
@@ -27,13 +26,13 @@ import { BenchLayout as Layout, EMPTY_LAYOUT, loadLayout, panelsOf, reconcile, s
 
 // loaded when first opened (with its chart)
 const RecordingsDrawer = lazy(() => import('../recording/RecordingsDrawer').then((m) => ({ default: m.RecordingsDrawer })))
-const ApiReference = lazy(() => import('../apidocs/ApiReference').then((m) => ({ default: m.ApiReference })))
 const AutomationDrawer = lazy(() => import('../automation/AutomationDrawer').then((m) => ({ default: m.AutomationDrawer })))
 
-type DrawerKind = 'instruments' | 'log' | 'recordings' | 'automation' | 'about' | 'api' | null
+type DrawerKind = 'instruments' | 'recordings' | 'automation' | 'about' | null
 
-// ?openDocs=true (where /docs redirects) opens the API reference
-const initialDrawer = (): DrawerKind => (new URLSearchParams(window.location.search).get('openDocs') === 'true' ? 'api' : null)
+// ?openDocs=true (where /docs redirects) opens the API reference: Instruments - API
+const openDocs = () => new URLSearchParams(window.location.search).get('openDocs') === 'true'
+const initialDrawer = (): DrawerKind => (openDocs() ? 'instruments' : null)
 
 function Drawer({ title, onClose, children, wide }: { title: string; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -77,8 +76,10 @@ function BenchShell({ instruments, registry, apiBase, loading, error, wsDiag, on
   const [drawer, setDrawer] = useState<DrawerKind>(initialDrawer)
   const [autoAdd, setAutoAdd] = useState(false)
   // the Instruments drawer's first tab: its button opens the instruments, a title-bar badge the System tab
-  const [instrumentsTab, setInstrumentsTab] = useState<SettingsTab>('instruments')
-  const openInstruments = (tab: SettingsTab = 'instruments') => { setInstrumentsTab(tab); setDrawer('instruments') }
+  const [instrumentsTab, setInstrumentsTab] = useState<SettingsTab>(() => (openDocs() ? 'api' : 'instruments'))
+  // the tab shown now (the drawer is wide for the API reference)
+  const [shownTab, setShownTab] = useState<SettingsTab>(instrumentsTab)
+  const openInstruments = (tab: SettingsTab = 'instruments') => { setInstrumentsTab(tab); setShownTab(tab); setDrawer('instruments') }
   const version = useAppVersion()
 
   // The layout follows the configured instruments: new ones appear, removed ones go.
@@ -133,8 +134,6 @@ function BenchShell({ instruments, registry, apiBase, loading, error, wsDiag, on
               <button type="button" className="bench-btn" aria-pressed={drawer === 'instruments'} onClick={() => openInstruments()}>Instruments</button>
               <button type="button" className="bench-btn" aria-pressed={drawer === 'recordings'} onClick={() => setDrawer('recordings')}>Recording</button>
               <button type="button" className="bench-btn" aria-pressed={drawer === 'automation'} onClick={() => setDrawer('automation')}>Automation</button>
-              <button type="button" className="bench-btn" aria-pressed={drawer === 'log'} onClick={() => setDrawer('log')}>Log</button>
-              <button type="button" className="bench-btn" aria-pressed={drawer === 'api'} onClick={() => setDrawer('api')}>API</button>
               <button type="button" className="bench-btn" aria-pressed={drawer === 'about'} onClick={() => setDrawer('about')}>Feedback</button>
             </nav>
           </div>
@@ -175,8 +174,8 @@ function BenchShell({ instruments, registry, apiBase, loading, error, wsDiag, on
       <RecorderDock />
 
       {drawer === 'instruments' && (
-        <Drawer title="Instruments" onClose={() => setDrawer(null)}>
-          <SettingsView key={instrumentsTab} initialTab={instrumentsTab} apiBase={apiBase} onConfigUpdated={onConfigUpdated} autoAddInstrument={autoAdd} onAutoAddComplete={() => setAutoAdd(false)} instruments={instruments} />
+        <Drawer title="Instruments" wide={shownTab === 'api'} onClose={() => setDrawer(null)}>
+          <SettingsView key={instrumentsTab} initialTab={instrumentsTab} onTabChange={setShownTab} apiBase={apiBase} onConfigUpdated={onConfigUpdated} autoAddInstrument={autoAdd} onAutoAddComplete={() => setAutoAdd(false)} instruments={instruments} />
         </Drawer>
       )}
       {drawer === 'recordings' && (
@@ -192,16 +191,6 @@ function BenchShell({ instruments, registry, apiBase, loading, error, wsDiag, on
       {drawer === 'about' && (
         <Drawer title="About and feedback" onClose={() => setDrawer(null)}>
           <AboutView />
-        </Drawer>
-      )}
-      {drawer === 'api' && (
-        <Drawer title="API reference" wide onClose={() => setDrawer(null)}>
-          <Suspense fallback={<span className="bench-hint">Loading…</span>}><ApiReference apiBase={apiBase} instruments={instruments} /></Suspense>
-        </Drawer>
-      )}
-      {drawer === 'log' && (
-        <Drawer title="Request log" onClose={() => setDrawer(null)}>
-          <LogsPanel />
         </Drawer>
       )}
     </div>

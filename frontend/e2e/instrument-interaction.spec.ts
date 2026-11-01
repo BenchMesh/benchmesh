@@ -126,7 +126,7 @@ test.describe('DMM controls', () => {
 });
 
 test.describe('Request log', () => {
-  test('instrument operations are recorded in the Log drawer', async ({ mockPage, api }) => {
+  test('instrument operations are recorded in Instruments - Log', async ({ mockPage, api }) => {
     const v = mockPage.getByRole('spinbutton', { name: 'Voltage setpoint' });
     await expect(v).toHaveAttribute('aria-valuenow', '5');
     await v.focus();
@@ -134,8 +134,9 @@ test.describe('Request log', () => {
     await v.press('Enter');
     await expect.poll(() => api.posts.length).toBe(1);
 
-    await mockPage.getByRole('button', { name: 'Log', exact: true }).click();
-    const log = mockPage.getByRole('dialog', { name: 'Request log' });
+    await mockPage.getByRole('button', { name: 'Instruments', exact: true }).click();
+    await mockPage.getByTestId('settings-tab-log').click();
+    const log = mockPage.getByRole('region', { name: 'Request log' });
     const entry = log.locator('.log-entry').filter({ hasText: '/instruments/PSU/test-psu-1/1/voltage/6' });
     await expect(entry).toBeVisible();
     await expect(entry).toContainText('POST');

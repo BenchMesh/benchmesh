@@ -37,13 +37,14 @@ const storedIds = (page: Page) => page.evaluate(() =>
   (JSON.parse(localStorage.getItem('benchmesh:requestLogs') ?? '[]') as { id: string }[]).map((l) => l.id));
 
 test.describe('Request log persistence', () => {
-  test('stored logs are shown in the Log drawer after a reload', async ({ mockPage }) => {
+  test('stored logs are shown in Instruments - Log after a reload', async ({ mockPage }) => {
     await seed(mockPage, [
       { id: 'seed-get', ageMs: 1000, method: 'GET', url: 'http://localhost/instruments/PSU/test-1/1/voltage' },
       { id: 'seed-post', ageMs: 2000, method: 'POST', url: 'http://localhost/instruments/PSU/test-1/1/current/2.5' },
     ]);
-    await mockPage.getByRole('button', { name: 'Log', exact: true }).click();
-    const log = mockPage.getByRole('dialog', { name: 'Request log' });
+    await mockPage.getByRole('button', { name: 'Instruments', exact: true }).click();
+    await mockPage.getByTestId('settings-tab-log').click();
+    const log = mockPage.getByRole('region', { name: 'Request log' });
     await expect(log.getByText('/instruments/PSU/test-1/1/voltage', { exact: true })).toBeVisible();
     await expect(log.locator('.log-entry').filter({ hasText: '/instruments/PSU/test-1/1/current/2.5' })).toContainText('POST');
   });
@@ -55,8 +56,9 @@ test.describe('Request log persistence', () => {
 
   test('Clear empties the log and its storage', async ({ mockPage }) => {
     await seed(mockPage, [{ id: 'seed-1', ageMs: 1000 }]);
-    await mockPage.getByRole('button', { name: 'Log', exact: true }).click();
-    const log = mockPage.getByRole('dialog', { name: 'Request log' });
+    await mockPage.getByRole('button', { name: 'Instruments', exact: true }).click();
+    await mockPage.getByTestId('settings-tab-log').click();
+    const log = mockPage.getByRole('region', { name: 'Request log' });
     await expect(log.locator('.log-entry').first()).toBeVisible();
     await log.getByRole('button', { name: 'Clear' }).click();
     await expect(log.getByText('No API requests logged yet')).toBeVisible();
@@ -68,8 +70,9 @@ test.describe('Request log persistence', () => {
       { id: 'seed-get', ageMs: 1000, method: 'GET', url: 'http://localhost/seeded/get' },
       { id: 'seed-post', ageMs: 2000, method: 'POST', url: 'http://localhost/seeded/post' },
     ]);
-    await mockPage.getByRole('button', { name: 'Log', exact: true }).click();
-    const log = mockPage.getByRole('dialog', { name: 'Request log' });
+    await mockPage.getByRole('button', { name: 'Instruments', exact: true }).click();
+    await mockPage.getByTestId('settings-tab-log').click();
+    const log = mockPage.getByRole('region', { name: 'Request log' });
     await log.locator('select').first().selectOption('POST');
     await expect(log.getByText('/seeded/post')).toBeVisible();
     await expect(log.getByText('/seeded/get')).toHaveCount(0);

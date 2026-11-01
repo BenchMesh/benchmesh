@@ -87,18 +87,22 @@ test.describe('Drawers', () => {
     const menu = mockPage.getByRole('navigation', { name: 'Main' });
     await expect(menu.getByRole('button', { name: 'Instruments', exact: true })).toHaveAttribute('aria-pressed', 'true');
 
-    // the menu is not covered: Log replaces the Instruments drawer
-    await menu.getByRole('button', { name: 'Log', exact: true }).click();
-    await expect(mockPage.getByRole('dialog', { name: 'Request log' })).toBeVisible();
+    // the menu is not covered: Recording replaces the Instruments drawer
+    await menu.getByRole('button', { name: 'Recording', exact: true }).click();
+    await expect(mockPage.getByRole('dialog', { name: 'Recordings' })).toBeVisible();
     await expect(instruments).toBeHidden();
-    await expect(menu.getByRole('button', { name: 'Log', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(menu.getByRole('button', { name: 'Recording', exact: true })).toHaveAttribute('aria-pressed', 'true');
   });
 
-  test('Log drawer opens with the request log and closes on the scrim', async ({ mockPage }) => {
-    await mockPage.getByRole('button', { name: 'Log', exact: true }).click();
-    const drawer = mockPage.getByRole('dialog', { name: 'Request log' });
-    await expect(drawer).toBeVisible();
-    await expect(drawer.locator('.logs-panel')).toBeVisible();
+  test('Log and API are Instruments tabs, not menu buttons; Log shows the request log and closes on the scrim', async ({ mockPage }) => {
+    const menu = mockPage.getByRole('navigation', { name: 'Main' });
+    await expect(menu.getByRole('button', { name: 'Log', exact: true })).toHaveCount(0);
+    await expect(menu.getByRole('button', { name: 'API', exact: true })).toHaveCount(0);
+    await menu.getByRole('button', { name: 'Instruments', exact: true }).click();
+    const drawer = mockPage.getByRole('dialog', { name: 'Instruments' });
+    await expect(drawer.getByTestId('settings-tab-api')).toBeVisible();
+    await drawer.getByTestId('settings-tab-log').click();
+    await expect(drawer.getByRole('region', { name: 'Request log' }).locator('.logs-panel')).toBeVisible();
 
     // the scrim covers the page left of the sheet
     await drawer.locator('.bench-drawer__scrim').click({ position: { x: 10, y: 200 } });

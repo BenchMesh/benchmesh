@@ -1,12 +1,14 @@
 /**
- * API reference drawer (frontend/src/ui/apidocs): the server's /openapi.json grouped by tag,
- * filterable, each operation sent from the drawer.
+ * API reference, Instruments - API (frontend/src/ui/apidocs): the server's /openapi.json grouped
+ * by tag, filterable, each operation sent from the drawer, which is wide while the tab is open.
  */
 import { test, expect } from './fixtures/base';
 
 const openReference = async (page: import('@playwright/test').Page) => {
-  await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'API', exact: true }).click();
-  const drawer = page.getByRole('dialog', { name: 'API reference' });
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Instruments', exact: true }).click();
+  await page.getByTestId('settings-tab-api').click();
+  await expect(page.locator('.bench-drawer__sheet--wide')).toBeVisible();
+  const drawer = page.getByRole('region', { name: 'API reference' });
   await expect(drawer).toBeVisible();
   return drawer;
 };
@@ -76,6 +78,6 @@ test.describe('API reference', () => {
 
   test('/docs (?openDocs=true) opens the reference directly', async ({ page, api: _api }) => {
     await page.goto('/ui/?openDocs=true');
-    await expect(page.getByRole('dialog', { name: 'API reference' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Instruments' }).getByRole('region', { name: 'API reference' })).toBeVisible();
   });
 });
