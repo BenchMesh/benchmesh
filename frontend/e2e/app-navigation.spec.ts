@@ -51,7 +51,7 @@ test.describe('Top bar', () => {
 
   test('shows all navigation buttons; the skin switch lives in Instruments - Miscellaneous', async ({ mockPage }) => {
     const nav = mockPage.getByRole('navigation', { name: 'Main' });
-    for (const name of ['Instruments', 'Recording', 'Automation', 'Log', 'API', 'Feedback']) {
+    for (const name of ['Instruments', 'Recording', 'Automation', 'Feedback']) {
       await expect(nav.getByRole('button', { name, exact: true })).toBeVisible();
     }
     await expect(mockPage.locator('header.bench-top').getByRole('group', { name: 'Skin' })).toHaveCount(0);

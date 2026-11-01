@@ -24,7 +24,8 @@ test.describe('API reference', () => {
     await drawer.getByRole('searchbox', { name: 'Filter endpoints' }).fill('registry');
     await expect(drawer.getByText('1 endpoint', { exact: true })).toBeVisible();
     await expect(drawer.getByRole('region', { name: 'system' })).toHaveCount(0);
-    await drawer.getByRole('button', { name: 'Close' }).click();
+    // the reference is a tab of the Instruments drawer: closing the drawer closes it
+    await mockPage.getByRole('dialog', { name: 'Instruments' }).getByRole('button', { name: 'Close', exact: true }).click();
     await expect(drawer).toBeHidden();
   });
 
