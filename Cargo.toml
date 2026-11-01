@@ -5,7 +5,7 @@ members = ["crates/*"]
 default-members = ["crates/bm-devicedef", "crates/bm-driver", "crates/bm-transport", "crates/bm-probe", "crates/bm-server", "crates/bm-store"]
 
 [workspace.package]
-version = "0.1.20"
+version = "0.1.21"
 edition = "2021"
 license = "MIT"
 rust-version = "1.86"
