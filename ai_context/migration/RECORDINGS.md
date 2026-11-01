@@ -35,14 +35,21 @@ recording at any time; recordings may run for hours.
 ## Environmental readings
 
 A distribution may add an environmental sensor (`Extension::environment`, `crates/bm-server/src/environment.rs`;
-the official build: BenchMesh Sensors, a BME280 / BMP280 on a CH341A USB-I2C adapter). While it reports (a reading
-newer than 5 s), every recording that is `recording` or `paused` has one series per reading it reports - signal
-`{device_id: "environment", class: "ENV", channel: 1, field: TEMP | HUM | PRES}`, labels `Environment · Temperature`
-/ `Humidity` / `Pressure`, units `°C` / `%RH` / `hPa` - added when the recording is created and, for a sensor that
-appears later, at the next tick. Without a sensor nothing is added. These series carry `"locked": true` (every other
+the official build: BenchMesh Sensors I2C, sensor chips on a CH341A USB-I2C adapter). While it reports (a reading
+newer than 5 s), every recording that is `recording` or `paused` has one series per reading it reports - per
+sensor and quantity, so two temperature sensors give two columns - signal `{device_id: "environment", class: "ENV",
+channel: <the sensor, 1 or more; the official build: its I2C address>, field: TEMP | HUM | DEW | AH | PRES}`
+(temperature, relative humidity, dew point, absolute humidity, pressure), with the label and unit the sensor gives
+the reading (its units setting: e.g. `Environment · Temperature (SHT4x 0x44)` in `°C` / `°F` / `K`,
+`Environment · Dew point (SHT4x 0x44)` in `°F`, `Pressure (BMP280 0x76)` in `hPa` / `inHg` / ...) - added when the recording is created and, for a sensor that appears later, at the next tick.
+When a reading's unit or label changes (the user picks other units, another chip at the address; relative humidity,
+dew point and absolute humidity count as one reading), its series ends and a new series in the new
+unit starts, so every series has one unit (the CSV has both columns, e.g. `Environment · Temperature (SHT4x 0x44) [°C]` and
+`[°F]`). Without a sensor nothing is added. These series carry `"locked": true` (every other
 series `false`): `DELETE` answers 409, and the UI offers no removal. The sampler takes their values from the sensor
 with the same freshness rule; the CSV export has their columns like any other. `environment` is not a valid config
-entry id. `GET /environment` → `{present, source, readings: [{field, label, unit, value, at}]}`.
+entry id. `GET /environment` → `{present, source, readings: [{field, channel, label, unit, value, at}]}`. A sensor that stops
+reporting leaves its series in place (gaps) until it reports again.
 
 ## Storage (`bm-store`, `~/.benchmesh/recordings.db`; simulation: in memory)
 

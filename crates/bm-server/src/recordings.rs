@@ -93,7 +93,7 @@ impl Recordings {
             for d in &due {
                 let s = &d.signal;
                 let v = if is_environment(s) {
-                    env.iter().find(|r| r.field == s.field).map(|r| r.value)
+                    env.iter().find(|r| r.channel == s.channel && r.field == s.field).map(|r| r.value)
                 } else {
                     u8::try_from(s.channel)
                     .ok()
@@ -152,12 +152,14 @@ impl Recordings {
     }
 
     /// Gives every running or paused recording (or only `only`) a series for each of these
-    /// readings it lacks, and announces the recordings changed.
+    /// readings it lacks - ending its series of the same sensor (channel) and quantity when the
+    /// field, label or unit changed (°C to °F, relative humidity to dew point, another chip at
+    /// the address) - and announces the recordings changed.
     async fn add_environment(&self, env: &[environment::Reading], only: Option<i64>) {
         if env.is_empty() {
             return;
         }
-        let fields: Vec<&'static str> = env.iter().map(|r| r.field).collect();
+        let env = env.to_vec();
         let store = self.store.clone();
         let changed = tokio::task::spawn_blocking(move || -> Result<Vec<i64>, StoreError> {
             let t = now_ms();
@@ -168,13 +170,18 @@ impl Recordings {
                 }
                 let series = store.series_of(r.id)?;
                 let mut added = false;
-                for f in &fields {
-                    if series.iter().any(|s| s.removed_at.is_none() && is_environment(&s.signal) && s.signal.field == *f) {
-                        continue;
+                for e in &env {
+                    let label = environment::label(e);
+                    let current = series.iter().find(|s| s.removed_at.is_none() && is_environment(&s.signal) && s.signal.channel == e.channel && environment::quantity(&s.signal.field) == environment::quantity(e.field));
+                    match current {
+                        Some(s) if s.signal.field == e.field && s.unit == e.unit && s.label == label => continue,
+                        Some(s) => {
+                            store.end_series(r.id, s.id, t)?;
+                        }
+                        None => {}
                     }
-                    let signal = Signal { device_id: environment::DEVICE_ID.into(), class: environment::CLASS.into(), channel: environment::CHANNEL, field: f.to_string() };
-                    let unit = environment::field(f).map_or("", |(_, u)| u);
-                    store.add_series(r.id, &signal, &environment::label(f), unit, t)?;
+                    let signal = Signal { device_id: environment::DEVICE_ID.into(), class: environment::CLASS.into(), channel: e.channel, field: e.field.to_string() };
+                    store.add_series(r.id, &signal, &label, e.unit, t)?;
                     added = true;
                 }
                 if added {

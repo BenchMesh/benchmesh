@@ -2,9 +2,11 @@
 //! a distribution adds (`Extension::environment`; the open-source build has none).
 //!
 //! While a sensor reports, every recording that is running or paused gets one series per reading
-//! it reports (`recordings.rs`), on the same time domain as the instruments; the series cannot be
-//! removed (`locked`). Without a sensor nothing is added. `GET /environment` returns the latest
-//! readings for the UI.
+//! it reports (`recordings.rs`) - per sensor chip and quantity, the chip being the series'
+//! channel -, on the same time domain as the instruments, with the reading's label and unit (the
+//! units the sensor's settings choose); the series cannot be removed (`locked`). When a reading's
+//! unit or label changes, its series ends and a new one starts.
+//! Without a sensor nothing is added. `GET /environment` returns the latest readings for the UI.
 
 use std::time::Duration;
 
@@ -17,21 +19,28 @@ use crate::S;
 
 /// The signal device id of environmental series (a config entry may not use it).
 pub const DEVICE_ID: &str = "environment";
-/// Their signal class and channel.
+/// Their signal class (the channel: which sensor, see [`Reading::channel`]).
 pub const CLASS: &str = "ENV";
-pub const CHANNEL: i64 = 1;
 
 /// A reading older than this is not shown or recorded (the recordings' `MAX_AGE`).
 pub const MAX_AGE: Duration = Duration::from_secs(5);
 
-/// The readings an environmental sensor can report: field, label, unit.
-pub const FIELDS: [(&str, &str, &str); 3] = [("TEMP", "Temperature", "°C"), ("HUM", "Humidity", "%RH"), ("PRES", "Pressure", "hPa")];
+/// The readings an environmental sensor can report: temperature, relative humidity, dew point,
+/// absolute humidity, pressure.
+pub const FIELDS: [&str; 5] = ["TEMP", "HUM", "DEW", "AH", "PRES"];
 
 /// One reading of the sensor.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Reading {
-    /// One of [`FIELDS`]' fields.
+    /// One of [`FIELDS`].
     pub field: &'static str,
+    /// Which sensor measured it (1 or more, stable for the sensor: the official build uses its
+    /// I2C address); each sensor's readings are their own series.
+    pub channel: i64,
+    /// e.g. "Temperature (SHT4x 0x44)", "Dew point (BME280 0x76)"
+    pub label: String,
+    /// e.g. "°C", "°F", "%RH", "g/m³", "hPa", "inHg"
+    pub unit: &'static str,
     pub value: f64,
     /// When it was measured (ms since the epoch).
     pub at: i64,
@@ -46,10 +55,15 @@ pub struct Snapshot {
 }
 
 impl Snapshot {
-    /// The readings measured within [`MAX_AGE`] before `now` (ms), with a finite value of a known field.
+    /// The readings measured within [`MAX_AGE`] before `now` (ms), with a finite value of a known
+    /// field and a label and unit.
     pub fn fresh(&self, now: i64) -> Vec<Reading> {
         let max = MAX_AGE.as_millis() as i64;
-        self.readings.iter().copied().filter(|r| field(r.field).is_some() && r.value.is_finite() && now - r.at <= max).collect()
+        self.readings
+            .iter()
+            .filter(|r| FIELDS.contains(&r.field) && r.channel >= 1 && !r.label.is_empty() && !r.unit.is_empty() && r.value.is_finite() && now - r.at <= max)
+            .cloned()
+            .collect()
     }
 }
 
@@ -59,14 +73,18 @@ pub trait Environment: Send + Sync {
     fn snapshot(&self) -> Option<Snapshot>;
 }
 
-/// Label and unit of a field.
-pub fn field(f: &str) -> Option<(&'static str, &'static str)> {
-    FIELDS.iter().find(|(k, _, _)| *k == f).map(|(_, l, u)| (*l, *u))
+/// What a field measures: relative humidity, dew point and absolute humidity are one quantity
+/// given in different ways (a recording has one series of it at a time).
+pub fn quantity(field: &str) -> &str {
+    match field {
+        "HUM" | "DEW" | "AH" => "HUM",
+        f => f,
+    }
 }
 
-/// Series label of a field, e.g. "Environment · Temperature".
-pub fn label(f: &str) -> String {
-    format!("Environment · {}", field(f).map_or(f, |(l, _)| l))
+/// Series label of a reading, e.g. "Environment · Temperature".
+pub fn label(r: &Reading) -> String {
+    format!("Environment · {}", r.label)
 }
 
 /// The fresh readings of `env` at `now`, or none (no source, no sensor, nothing fresh).
@@ -76,7 +94,7 @@ pub fn fresh(env: Option<&dyn Environment>, now: i64) -> Option<(String, Vec<Rea
     (!r.is_empty()).then_some((snap.source, r))
 }
 
-/// `GET /environment`: `{present, source, readings: [{field, label, unit, value, at}]}`.
+/// `GET /environment`: `{present, source, readings: [{field, channel, label, unit, value, at}]}`.
 pub async fn get_environment(State(s): State<S>) -> Json<Value> {
     Json(snapshot_json(s.extensions.environment().as_deref(), now_ms()))
 }
@@ -88,8 +106,7 @@ pub fn snapshot_json(env: Option<&dyn Environment>, now: i64) -> Value {
             "present": true,
             "source": source,
             "readings": readings.iter().map(|r| {
-                let (label, unit) = field(r.field).unwrap_or(("", ""));
-                json!({"field": r.field, "label": label, "unit": unit, "value": r.value, "at": r.at})
+                json!({"field": r.field, "channel": r.channel, "label": r.label, "unit": r.unit, "value": r.value, "at": r.at})
             }).collect::<Vec<_>>(),
         }),
     }
@@ -106,22 +123,28 @@ mod tests {
         }
     }
 
+    fn r(field: &'static str, label: &str, unit: &'static str, value: f64, at: i64) -> Reading {
+        Reading { field, channel: 0x44, label: label.into(), unit, value, at }
+    }
+
     fn snap(at: i64) -> Snapshot {
         Snapshot {
             source: "BenchMesh Sensors (BME280)".into(),
             readings: vec![
-                Reading { field: "TEMP", value: 23.4, at },
-                Reading { field: "HUM", value: f64::NAN, at },
-                Reading { field: "PRES", value: 1013.25, at: at - 6000 },
-                Reading { field: "WIND", value: 1.0, at },
+                r("TEMP", "Temperature", "°F", 74.1, at),
+                r("HUM", "Humidity", "%RH", f64::NAN, at),
+                r("PRES", "Pressure", "hPa", 1013.25, at - 6000),
+                r("WIND", "Wind", "m/s", 1.0, at),
+                r("DEW", "Dew point", "", 9.0, at),
+                Reading { channel: 0, ..r("TEMP", "Temperature", "°C", 20.0, at) },
             ],
         }
     }
 
     #[test]
-    fn only_fresh_finite_known_readings_count() {
+    fn only_fresh_finite_known_readings_with_a_unit_count() {
         let r = snap(10_000).fresh(10_500);
-        assert_eq!(r, vec![Reading { field: "TEMP", value: 23.4, at: 10_000 }]);
+        assert_eq!(r, vec![super::Reading { field: "TEMP", channel: 0x44, label: "Temperature".into(), unit: "°F", value: 74.1, at: 10_000 }]);
     }
 
     #[test]
@@ -132,14 +155,13 @@ mod tests {
         let v = snapshot_json(Some(&Fixed(Some(snap(10_000)))), 10_000);
         assert_eq!(v["present"], true);
         assert_eq!(v["source"], "BenchMesh Sensors (BME280)");
-        assert_eq!(v["readings"][0], json!({"field": "TEMP", "label": "Temperature", "unit": "°C", "value": 23.4, "at": 10_000}));
+        assert_eq!(v["readings"][0], json!({"field": "TEMP", "channel": 0x44, "label": "Temperature", "unit": "°F", "value": 74.1, "at": 10_000}));
         assert_eq!(v["readings"].as_array().unwrap().len(), 1);
     }
 
     #[test]
     fn labels_name_the_reading() {
-        assert_eq!(label("PRES"), "Environment · Pressure");
-        assert_eq!(field("HUM"), Some(("Humidity", "%RH")));
-        assert_eq!(field("X"), None);
+        assert_eq!(label(&r("DEW", "Dew point", "°C", 9.0, 0)), "Environment · Dew point");
+        assert_eq!((quantity("DEW"), quantity("AH"), quantity("HUM"), quantity("PRES")), ("HUM", "HUM", "HUM", "PRES"));
     }
 }

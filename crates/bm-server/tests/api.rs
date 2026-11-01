@@ -1135,18 +1135,29 @@ async fn an_instrument_in_use_by_the_running_flow_cannot_be_parked() {
 
 // ---- environmental sensor ------------------------------------------------------------
 
-/// A sensor whose readings the test sets (`None`: not attached).
+/// A sensor whose readings the test sets (`None`: not attached): a BME280-like chip at 0x76
+/// (temperature, pressure, humidity when given), its temperature unit (`None`: °C), humidity as
+/// the dew point, and a second temperature sensor at 0x48 (`Some`: attached).
 #[derive(Default)]
-struct FakeSensor(Mutex<Option<(f64, Option<f64>)>>);
+struct FakeSensor(Mutex<Option<(f64, Option<f64>)>>, Mutex<Option<&'static str>>, Mutex<bool>, Mutex<Option<f64>>);
 
 impl bm_server::environment::Environment for FakeSensor {
     fn snapshot(&self) -> Option<bm_server::environment::Snapshot> {
         use bm_server::environment::{Reading, Snapshot};
         let (t, h) = (*self.0.lock().unwrap())?;
+        let unit = self.1.lock().unwrap().unwrap_or("°C");
         let at = bm_store::now_ms();
-        let mut readings = vec![Reading { field: "TEMP", value: t, at }, Reading { field: "PRES", value: 1013.2, at }];
+        let r = |field, channel, label: &str, unit, value| Reading { field, channel, label: label.into(), unit, value, at };
+        let mut readings = vec![r("TEMP", 0x76, "Temperature (BME280 0x76)", unit, t), r("PRES", 0x76, "Pressure (BME280 0x76)", "hPa", 1013.2)];
         if let Some(h) = h {
-            readings.push(Reading { field: "HUM", value: h, at });
+            readings.push(if *self.2.lock().unwrap() {
+                r("DEW", 0x76, "Dew point (BME280 0x76)", unit, h)
+            } else {
+                r("HUM", 0x76, "Humidity (BME280 0x76)", "%RH", h)
+            });
+        }
+        if let Some(t2) = *self.3.lock().unwrap() {
+            readings.push(r("TEMP", 0x48, "Temperature (TMP117 0x48)", unit, t2));
         }
         Some(Snapshot { source: "Fake (BME280)".into(), readings })
     }
@@ -1199,7 +1210,7 @@ async fn environmental_readings_are_recorded_in_every_recording_and_locked() {
     assert_eq!(code, StatusCode::CREATED, "{r}");
     assert_eq!(fields(&r), [("HUM".into(), true), ("PRES".into(), true), ("TEMP".into(), true)]);
     let temp = r["series"].as_array().unwrap().iter().find(|s| s["field"] == "TEMP").unwrap().clone();
-    assert_eq!((temp["label"].clone(), temp["unit"].clone(), temp["class"].clone()), (json!("Environment · Temperature"), json!("°C"), json!("ENV")));
+    assert_eq!((temp["label"].clone(), temp["unit"].clone(), temp["class"].clone(), temp["channel"].clone()), (json!("Environment · Temperature (BME280 0x76)"), json!("°C"), json!("ENV"), json!(0x76)));
     let id = r["id"].as_i64().unwrap();
     let tid = temp["id"].as_i64().unwrap();
 
@@ -1211,7 +1222,7 @@ async fn environmental_readings_are_recorded_in_every_recording_and_locked() {
     assert_eq!(s1["locked"], false);
     assert_eq!(call(&f, "DELETE", &format!("/recordings/{id}/series/{}", s1["id"]), None, None).await.0, StatusCode::NO_CONTENT);
     // and they are not addressable as a device
-    assert_eq!(add_series(&f, id, json!({"device_id": "environment", "class": "ENV", "channel": 1, "field": "TEMP"})).await.0, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(add_series(&f, id, json!({"device_id": "environment", "class": "ENV", "channel": 0x76, "field": "TEMP"})).await.0, StatusCode::UNPROCESSABLE_ENTITY);
 
     // samples on the common time domain, in the CSV with their units
     let d = wait_data(&f, id, "temperature samples", |d| d["series"].as_array().unwrap().iter().any(|s| s["id"] == tid && !s["t"].as_array().unwrap().is_empty())).await;
@@ -1220,7 +1231,7 @@ async fn environmental_readings_are_recorded_in_every_recording_and_locked() {
     assert!(ts(s).iter().all(|t| t % 1000 == 0));
     let (code, csv, _) = call(&f, "GET", &format!("/recordings/{id}/export"), None, None).await;
     assert_eq!(code, StatusCode::OK);
-    assert!(csv.as_str().unwrap().lines().next().unwrap().contains("Environment · Temperature [°C]"), "{csv}");
+    assert!(csv.as_str().unwrap().lines().next().unwrap().contains("Environment · Temperature (BME280 0x76) [°C]"), "{csv}");
 
     // a config entry may not take the id
     let (code, v, _) = call(&f, "POST", "/devices", Some(json!({"id": "environment", "driver": "tenma_72", "transport": "serial", "port": "/dev/null"})), None).await;
@@ -1254,4 +1265,86 @@ async fn without_a_sensor_recordings_get_no_environmental_readings_until_one_rep
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
     assert_eq!(fields(&recording_of(&f, sid).await), Vec::<(String, bool)>::new());
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_unit_change_ends_the_series_and_starts_one_in_the_new_unit() {
+    let sensor = Arc::new(FakeSensor::default());
+    *sensor.0.lock().unwrap() = Some((23.5, None));
+    let f = sensor_fixture("env-unit", sensor.clone());
+    let (_, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "units", "interval_s": 1})), None).await;
+    let id = r["id"].as_i64().unwrap();
+    let temps = |r: &Value| -> Vec<(String, bool)> {
+        r["series"].as_array().unwrap().iter().filter(|s| s["field"] == "TEMP")
+            .map(|s| (s["unit"].as_str().unwrap().to_string(), s["removed_at"].is_null())).collect()
+    };
+    assert_eq!(temps(&r), [("°C".to_string(), true)]);
+
+    *sensor.0.lock().unwrap() = Some((74.3, None));
+    *sensor.1.lock().unwrap() = Some("°F");
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let r = recording_of(&f, id).await;
+        if temps(&r).len() == 2 {
+            // the °C series is kept (ended), the °F one records from now on
+            assert_eq!(temps(&r), [("°C".to_string(), false), ("°F".to_string(), true)]);
+            break;
+        }
+        assert!(Instant::now() < deadline, "no °F series: {r}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    let (_, csv, _) = call(&f, "GET", &format!("/recordings/{id}/export"), None, None).await;
+    let head = csv.as_str().unwrap().lines().next().unwrap().to_string();
+    assert!(head.contains("Environment · Temperature (BME280 0x76) [°C]") && head.contains("Environment · Temperature (BME280 0x76) [°F]"), "{head}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn two_temperature_sensors_get_a_column_each() {
+    let sensor = Arc::new(FakeSensor::default());
+    *sensor.0.lock().unwrap() = Some((23.5, None));
+    *sensor.3.lock().unwrap() = Some(22.1);
+    let f = sensor_fixture("env-two", sensor.clone());
+    let (_, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "two", "interval_s": 1})), None).await;
+    let id = r["id"].as_i64().unwrap();
+    let temps: Vec<(i64, String)> = r["series"].as_array().unwrap().iter().filter(|s| s["field"] == "TEMP")
+        .map(|s| (s["channel"].as_i64().unwrap(), s["label"].as_str().unwrap().to_string())).collect();
+    assert_eq!(temps, [(0x76, "Environment · Temperature (BME280 0x76)".to_string()), (0x48, "Environment · Temperature (TMP117 0x48)".to_string())]);
+    let ids: Vec<i64> = r["series"].as_array().unwrap().iter().filter(|s| s["field"] == "TEMP").map(|s| s["id"].as_i64().unwrap()).collect();
+
+    // each column has its own sensor's values
+    let d = wait_data(&f, id, "both temperatures", |d| ids.iter().all(|sid| d["series"].as_array().unwrap().iter().any(|s| s["id"] == *sid && !s["v"].as_array().unwrap().is_empty()))).await;
+    let v = |sid: i64| d["series"].as_array().unwrap().iter().find(|s| s["id"] == sid).unwrap()["v"][0].clone();
+    assert_eq!((v(ids[0]), v(ids[1])), (json!(23.5), json!(22.1)));
+
+    // the second sensor is unplugged: its column stays (gaps), the other goes on
+    *sensor.3.lock().unwrap() = None;
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    let r = recording_of(&f, id).await;
+    assert!(r["series"].as_array().unwrap().iter().filter(|s| s["field"] == "TEMP").all(|s| s["removed_at"].is_null()), "{r}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn humidity_as_dew_point_replaces_the_relative_humidity_series() {
+    let sensor = Arc::new(FakeSensor::default());
+    *sensor.0.lock().unwrap() = Some((23.5, Some(45.0)));
+    let f = sensor_fixture("env-dew", sensor.clone());
+    let (_, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "dew", "interval_s": 1})), None).await;
+    let id = r["id"].as_i64().unwrap();
+    let hum = |r: &Value| -> Vec<(String, bool)> {
+        r["series"].as_array().unwrap().iter().filter(|s| s["field"] == "HUM" || s["field"] == "DEW")
+            .map(|s| (s["field"].as_str().unwrap().to_string(), s["removed_at"].is_null())).collect()
+    };
+    assert_eq!(hum(&r), [("HUM".to_string(), true)]);
+    *sensor.0.lock().unwrap() = Some((23.5, Some(11.0)));
+    *sensor.2.lock().unwrap() = true;
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        let r = recording_of(&f, id).await;
+        if hum(&r).len() == 2 {
+            assert_eq!(hum(&r), [("HUM".to_string(), false), ("DEW".to_string(), true)]);
+            break;
+        }
+        assert!(Instant::now() < deadline, "no dew point series: {r}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
 }

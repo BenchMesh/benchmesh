@@ -122,8 +122,9 @@ export function axisLayout(n: number): { position: 'left' | 'right'; offset: num
   return Array.from({ length: n }, (_, i) => ({ position: i % 2 === 0 ? 'left' : 'right', offset: Math.floor(i / 2) * AXIS_W }))
 }
 
-/** Units shown without an SI prefix: already prefixed or not SI (environmental readings: 1013.2 hPa, never 1.013 khPa). */
-const PLAIN_UNITS = new Set(['°C', '%RH', 'hPa', '%'])
+/** Units shown without an SI prefix: already prefixed or not SI - the environmental readings in
+ * every unit the sensor settings offer (1013.2 hPa, never 1.013 khPa; 101325 Pa as chosen). */
+const PLAIN_UNITS = new Set(['%', '°C', '°F', 'K', '%RH', 'g/m³', 'hPa', 'mbar', 'kPa', 'Pa', 'bar', 'atm', 'mmHg', 'inHg', 'psi'])
 
 /** Value text for legends and the tooltip. */
 export function valueText(v: number | null | undefined, unit: string): string {

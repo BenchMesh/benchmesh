@@ -83,6 +83,11 @@ describe('chart data shaping', () => {
     expect(valueText(41.18, '%RH')).toBe('41.18 %RH')
     expect(axisText(1013.4, 'hPa')).toBe('1013.4')
     expect(axisText(22.5, '°C')).toBe('22.5')
+    // every unit of the environmental settings is shown as chosen, never SI-prefixed
+    expect(valueText(101325, 'Pa')).toBe('101325 Pa')
+    expect(valueText(29.92, 'inHg')).toBe('29.92 inHg')
+    expect(valueText(72.5, '°F')).toBe('72.5 °F')
+    expect(valueText(1.01325, 'bar')).toBe('1.013 bar')
     expect(valueText(1500, 'V')).toBe('1.5 kV')
     expect(axisText(1500, 'V')).toBe('1.5 k')
   })
