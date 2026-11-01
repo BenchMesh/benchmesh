@@ -5,7 +5,7 @@ schema: benchmesh.device/v1
 id: rigol_dho800
 vendor: RIGOL
 family: DHO800/DHO900 series digital oscilloscope
-version: 1.0.0
+version: 1.0.1
 sources:
   - {doc: "DHO800/DHO900 Programming Guide (DHO800-Series_programmingguide_EN.pdf)", pages: "CHANnel 3.6, TIMebase, TRIGger, ACQuire, MEASure, WAVeform 3.28 (pp. 404-414)"}
 models:
@@ -47,6 +47,9 @@ commands:
   offset_q: {send: ":CHANnel{ch}:OFFSet?", parse: [trim, number], source: "CHANnel<n>:OFFSet"}
   coup_q: {send: ":CHANnel{ch}:COUPling?", parse: [trim], source: "CHANnel<n>:COUPling"}
   probe_q: {send: ":CHANnel{ch}:PROBe?", parse: [trim, number], source: "CHANnel<n>:PROBe"}
+  # The probe operation reports the ratio as text, like the setter's values ("0.1", "1", "10", ...);
+  # status PROBE stays a number (OSC contract). The DHO804 answers "1" for 1X.
+  probe_ratio_q: {send: ":CHANnel{ch}:PROBe?", parse: [trim], source: "CHANnel<n>:PROBe"}
   bwl_q: {send: ":CHANnel{ch}:BWLimit?", parse: [trim], source: "CHANnel<n>:BWLimit; 20M or OFF"}
   inv_q:
     send: ":CHANnel{ch}:INVert?"
@@ -238,7 +241,7 @@ classes:
       scale: {get: scale_q, set: scale_set, as: si}
       offset: {get: offset_q, set: offset_set, as: si}
       coupling: {get: coup_q, set: coup_set}
-      probe: {get: probe_q, set: probe_set}
+      probe: {get: probe_ratio_q, set: probe_set}
       bwlimit: {get: bwl_q, set: bwl_set}
       invert: {get: inv_q, set: inv_set}
       timebase: {get: tb_q, set: tb_set, as: si}
