@@ -1,6 +1,6 @@
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import { AboutView } from '../AboutView'
 import { PageLink, PAGE_URLS, SUPPORT_EMAIL } from '../links'
 import { fetchVersion } from '../version'
@@ -57,10 +57,33 @@ describe('About and feedback', () => {
     expect(screen.queryByRole('link', { name: 'GitHub releases' })).toBeNull()
   })
 
+  it('official: app problems go to GitHub, instrument problems to the panel flag of a linked BenchMesh', async () => {
+    answer(OFFICIAL)
+    render(<AboutView />)
+    await screen.findByTestId('app-version')
+    const app = screen.getByRole('region', { name: 'Problems with the app' })
+    expect(app).toHaveTextContent(/crashes or will not start/)
+    expect(within(app).getByRole('link', { name: 'Report an app issue' })).toHaveAttribute('href', PAGE_URLS['new-issue'])
+    const instrument = screen.getByTestId('instrument-problems')
+    expect(instrument).toHaveTextContent('Report a problem')
+    expect(instrument).toHaveTextContent('not as a GitHub issue')
+    expect(instrument).toHaveTextContent(/linked to your BenchMesh account/)
+    expect(within(instrument).queryByRole('link')).toBeNull()
+  })
+
+  it('community: instrument problems as a GitHub issue with the console text', async () => {
+    answer(COMMUNITY)
+    render(<AboutView />)
+    const instrument = await screen.findByTestId('instrument-problems')
+    expect(instrument).toHaveTextContent(/open a GitHub issue instead/)
+    expect(instrument).toHaveTextContent(/press Copy or Save/)
+    expect(instrument).not.toHaveTextContent(/linked to your BenchMesh account/)
+  })
+
   it('links to the GitHub issues', async () => {
     answer(COMMUNITY)
     render(<AboutView />)
-    expect(screen.getByRole('link', { name: 'Report an issue' })).toHaveAttribute('href', 'https://github.com/BenchMesh/benchmesh-app/issues/new')
+    expect(screen.getByRole('link', { name: 'Report an app issue' })).toHaveAttribute('href', 'https://github.com/BenchMesh/benchmesh-app/issues/new')
     expect(screen.getByRole('link', { name: 'See open issues' })).toHaveAttribute('href', PAGE_URLS.issues)
     expect(screen.getByText(PAGE_URLS.issues)).toBeInTheDocument()
   })

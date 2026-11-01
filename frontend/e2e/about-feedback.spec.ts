@@ -57,7 +57,7 @@ test.describe('About and feedback', () => {
     await expect(drawer.getByTestId('app-version')).toHaveCount(0);
     await expect(drawer.getByRole('button', { name: 'Copy version' })).toHaveCount(0);
     await expect(drawer.getByText(/0\.1\.7|newer release/)).toHaveCount(0);
-    await expect(drawer.getByRole('link', { name: 'Report an issue' })).toHaveAttribute('href', 'https://github.com/BenchMesh/benchmesh-app/issues/new');
+    await expect(drawer.getByRole('link', { name: 'Report an app issue' })).toHaveAttribute('href', 'https://github.com/BenchMesh/benchmesh-app/issues/new');
     await expect(drawer.getByRole('link', { name: 'See open issues' })).toHaveAttribute('href', 'https://github.com/BenchMesh/benchmesh-app/issues');
     await expect(drawer.getByRole('link', { name: 'support@benchmesh.online' })).toHaveAttribute('href', 'mailto:support@benchmesh.online');
     await drawer.getByRole('button', { name: 'Close' }).click();
