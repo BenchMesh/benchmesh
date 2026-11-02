@@ -325,6 +325,10 @@ validation, transport on Windows and macOS), `e2e-tests.yml`. Releases: bump the
 `crates/benchmesh-app/tauri.conf.json`) and refresh the community status snapshot (`scripts/community-status.sh`)
 on `develop`, tag `vX.Y.Z`, push; then the release workflow of
 `BenchMesh/services` builds the draft release here; publish with `gh release edit vX.Y.Z --draft=false -R BenchMesh/benchmesh-app`.
+The instrument fixer (benchmesh-services `docs/FIXER.md`, "Developing beside the fixer") releases hotfixes from
+`release/X.Y` at the same time: release from `develop` only while it has no release open and take the next free
+version; afterwards move both release lines to the release and run the fixer's `setup`; never commit to a release
+line by hand.
 
 ## Guidelines
 
