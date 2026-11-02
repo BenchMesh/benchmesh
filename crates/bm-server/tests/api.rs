@@ -487,6 +487,16 @@ async fn recordings_share_one_time_domain_and_lifecycle() {
     let f = fixture("rec");
     // Tenma output on → VOUT reads the 4.94 V setpoint
     assert_eq!(call(&f, "POST", "/instruments/PSU/t1/1/output/ON", None, None).await.0, StatusCode::NO_CONTENT);
+    // recorded values are the polled ones: wait until the poll has read it (a slow runner samples 0 first)
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let (_, v, _) = call(&f, "GET", "/instruments/PSU/t1/status", None, None).await;
+        if v["channels"]["1"]["status"]["VOUT"]["val"].as_str().and_then(|s| s.parse::<f64>().ok()) == Some(4.94) {
+            break;
+        }
+        assert!(Instant::now() < deadline, "VOUT never read 4.94: {v}");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
 
     let (code, r1, _) = call(&f, "POST", "/recordings", Some(json!({"name": " one ", "interval_s": 1})), None).await;
     assert_eq!(code, StatusCode::CREATED, "{r1}");
