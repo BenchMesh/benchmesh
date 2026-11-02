@@ -133,8 +133,10 @@ export function RunPanel({ doc, flowId, dirty, blocked, onHighlight, onOpenRecor
 
       {arm && (
         <div className="bench-modal" role="dialog" aria-modal="true" aria-label="Arm the run"
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setArm(null) } }}>
-          <div className="bench-modal__scrim" onClick={() => setArm(null)} />
+          onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation() }}>
+          {/* only Cancel closes it (a modal: a press beside it or Escape does nothing; Escape must not
+              reach the drawer behind it either) */}
+          <div className="bench-modal__scrim" />
           <div className="bench-modal__box">
             <h2>Arm the run?</h2>
             <p>This flow can switch outputs or inputs on:</p>

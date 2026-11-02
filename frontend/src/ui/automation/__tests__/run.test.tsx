@@ -58,7 +58,12 @@ describe('run panel', () => {
     })
     const run = await openRamp()
     fireEvent.click(run)
-    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    const dialog = await screen.findByRole('dialog')
+    // only Cancel closes it: a press beside it or Escape does not
+    fireEvent.click(document.querySelector('.bench-modal__scrim')!)
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+    expect(screen.getByRole('dialog', { name: 'Arm the run' })).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(n).toBe(1)
     fireEvent.click(run)

@@ -28,8 +28,10 @@ export interface Annunciator { label: string; on: boolean; alert?: boolean; titl
 export function Annunciators({ items }: { items: Annunciator[] }) {
   return (
     <div className="kit-anns" role="list" aria-label="Status">
-      {items.map((a) => (
-        <span key={a.label} role="listitem" className={`kit-ann${a.alert ? ' kit-ann--alert' : ''}`} data-on={a.on}
+      {/* keyed by place, not text: the list is fixed, and a flag's text changes and can equal another's
+          (sweep NORM beside acquisition NORM); a duplicate key left stale copies on the screen */}
+      {items.map((a, i) => (
+        <span key={i} role="listitem" className={`kit-ann${a.alert ? ' kit-ann--alert' : ''}`} data-on={a.on}
           title={a.title} aria-label={`${a.label} ${a.on ? 'on' : 'off'}`}>{a.label}</span>
       ))}
     </div>

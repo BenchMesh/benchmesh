@@ -275,6 +275,10 @@ pulses discreetly until the instrument's reported value (registry status, or a r
 setpoints) equals the requested one, and shows a small red dot if that does not happen within 6 s
 (`kit/confirm.ts`). Pass the reported value, never a locally assumed one.
 
+A **modal** (`bench-modal`: Report a problem, Arm the run, the update offer) closes only through its own buttons
+(Cancel, Done): a press beside it or Escape does nothing, so what was typed is never lost; drawers, popovers and
+menus close on a press outside or Escape.
+
 Drawer pages of text and controls use the shared page standard in `bench/bench.css`: content in
 `.bench-page` (16 px inset, 14 px rhythm, `.bench-hint` text), boxes in `.bench-group`, rows in
 `.bench-group__row` (About and feedback, Metrics, Remote access); `e2e/about-feedback.spec.ts` fails when a

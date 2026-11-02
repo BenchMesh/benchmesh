@@ -3,7 +3,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react'
 import { DigitEditor } from '../DigitEditor'
 import { ArmSwitch } from '../ArmSwitch'
-import { MicroSwitch, Selector } from '../controls'
+import { Annunciators, MicroSwitch, Selector } from '../controls'
 import { Stepper } from '../Stepper'
 
 const spec = { min: 0, max: 30, intDigits: 2, decimals: 2 }
@@ -165,5 +165,18 @@ describe('waiting for the instrument to confirm a change', () => {
     </>)
     expect(sw).toHaveAttribute('data-confirm', 'idle')
     expect(st).toHaveAttribute('data-confirm', 'idle')
+  })
+})
+
+describe('Annunciators', () => {
+  const scope = (sweep: string) => [
+    { label: 'RUN', on: true },
+    { label: sweep, on: true, title: 'Trigger sweep' },
+    { label: 'NORM', on: true, title: 'Acquisition type' },
+  ]
+  it('replaces a flag whose text changes, also when it reads like another flag (sweep NORM, acquisition NORM)', () => {
+    const { rerender } = render(<Annunciators items={scope('AUTO')} />)
+    for (const s of ['NORM', 'SING', 'AUTO', 'NORM', 'SING']) rerender(<Annunciators items={scope(s)} />)
+    expect(screen.getAllByRole('listitem').map((x) => x.textContent)).toEqual(['RUN', 'SING', 'NORM'])
   })
 })
