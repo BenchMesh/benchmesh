@@ -90,7 +90,16 @@ fn an_extension_adds_documented_routes_and_names_the_distribution() {
         fn api(&self) -> Vec<ApiRoute> {
             vec![ApiRoute { method: "get", path: "/system/hello", tag: "system", summary: "Says hello", body: false, no_try: None }]
         }
+        // background work with the server's state, on its runtime
+        fn started(&self, state: &bm_server::S) {
+            let state = state.clone();
+            tokio::spawn(async move {
+                state.community.reported("hello_def", Some("H1"));
+                STARTED.store(true, std::sync::atomic::Ordering::SeqCst);
+            });
+        }
     }
+    static STARTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 
     let start_with = |extensions| {
         start(ServerOptions {
@@ -113,6 +122,11 @@ fn an_extension_adds_documented_routes_and_names_the_distribution() {
     assert!(hello.starts_with("HTTP/1.1 200") && hello.ends_with("hello from an extension"), "{hello}");
     assert!(get(official.addr, "/openapi.json").contains(r#""summary":"Says hello""#));
     assert!(get(official.addr, "/version").contains(r#""distribution":"official""#));
+    let t0 = std::time::Instant::now();
+    while !STARTED.load(std::sync::atomic::Ordering::SeqCst) && t0.elapsed() < std::time::Duration::from_secs(5) {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    assert!(STARTED.load(std::sync::atomic::Ordering::SeqCst), "the extension was told the server started");
     official.stop();
 
     let community = start_with(Extensions::default());

@@ -58,8 +58,8 @@ repository `BenchMesh/services` (local `../benchmesh-services`): it overlays its
 (stub crate `crates/benchmesh-extensions` -> its implementation, `frontend/src/extensions/index.ts`, a Tauri
 capability and config), signs (updater key, its CI secrets; losing it means installed apps can no longer update) and
 publishes the release here. App updates (desktop modal and headless Updates) and future online-service integrations
-live only there. Extension points: `bm_server::extension` (routes + OpenAPI, `System::hand_over` for headless
-stop-and-run), `benchmesh_extensions::{DISTRIBUTION, server, desktop}`, `frontend/src/extensions/contract.ts`
+live only there. Extension points: `bm_server::extension` (routes + OpenAPI, `started` for background work with the server's state,
+`System::hand_over` for headless stop-and-run), `benchmesh_extensions::{DISTRIBUTION, server, desktop}`, `frontend/src/extensions/contract.ts`
 (`root`, `systemGroups`, `aboutGroups`, `onlineGroups`, `sensorsGroups` (Instruments → **Sensors**, shown only with groups; `ui/sensors/`), `topBarStatus`, `recordingViews`, `titleBadges`, `titleReadouts` (right of the title bar, before Arrange), `panelActions`). Never put private code, keys, release workflows or release notes in this repository.
 
 **Cross-site guard:** the loopback listener (127.0.0.1:57666, the app window) has no
@@ -140,7 +140,10 @@ generated>`; `BENCHMESH_ONLINE=off` disables it, simulations stay offline) and m
 (investigating), **Fix available** / **Fix coming** when the fix is newer than the app, published or not per
 `/api/v1/update/latest.json`, asked only then; hover, focus or a press shows its card - state, reports, since, what to
 do - `bench/issue.ts`, `bench/IssueMark.tsx`): Instruments → Supported shows it with the confirming versions, the
-panel header shows the issue. Offline: the snapshot, no issues. Linking,
+panel header shows the issue. Offline: the snapshot, no issues. A distribution may change single marks while it runs
+(`Community::apply` / `reported`; a change newer than a status's `generated` survives that status; the status's
+`live` names the website's push channel): the official build marks a model as soon as a report about it is sent and
+follows pushed changes. Linking,
 problem reports and "It works" confirmations are official-build only (benchmesh-services).
 
 **Parking** (contract `ai_context/PARKING.md`): `POST|DELETE /devices/{id}/park` sets `parked: true` in

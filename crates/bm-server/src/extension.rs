@@ -64,6 +64,10 @@ pub trait Extension: Send + Sync {
     fn environment(&self) -> Option<Arc<dyn Environment>> {
         None
     }
+    /// The server is set up: background work that needs its state starts here (called once, on
+    /// the server's runtime, so `tokio::spawn` works; return at once). A simulation is told by
+    /// `Host::data_dir` being `None`.
+    fn started(&self, _state: &S) {}
 }
 
 /// Finds a configured instrument by who it is (the entry's `match`) instead of the port it
@@ -108,6 +112,13 @@ impl Extensions {
     /// The finder of the first extension that has one.
     pub fn finder(&self) -> Option<Arc<dyn Finder>> {
         self.list.iter().find_map(|e| e.finder())
+    }
+
+    /// Tells every extension the server is set up (`Extension::started`).
+    pub fn started(&self, state: &S) {
+        for e in &self.list {
+            e.started(state);
+        }
     }
 
     /// The environmental sensor of the first extension that has one.

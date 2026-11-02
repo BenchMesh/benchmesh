@@ -160,6 +160,10 @@ pub fn start(opts: ServerOptions) -> Result<RunningServer, String> {
         let c = state.community.clone();
         rt.spawn(async move { c.refresh().await });
     }
+    {
+        let _guard = rt.enter();
+        state.extensions.started(&state);
+    }
 
     let listener = rt.block_on(async {
         let mut last = String::from("no listen address given");
