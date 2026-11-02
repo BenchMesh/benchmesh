@@ -56,7 +56,7 @@ Channel `{ch}` ∈ 1,2. `SOURce{ch}` prefix optional (omitted → CH1, PM p17). 
 | Offset | `SOURce{ch}:VOLTage:OFFSet <v>[mV\|V]` | `…VOLTage:OFFSet?` → `<voltage>` | ±(5 Vpk − Vpp/2) @50 Ω, ±(10 Vpk − Vpp/2) High Z (≤10 MHz) (UM p46) | - | PM p34-35 |
 | Phase | `SOURce{ch}:PHASe[:ADJust] <p>[RAD\|DEG]` | `…PHASe?` → value **in RAD** | 0-2π rad / 0-360°; default unit RAD; n/a for DC & noise | - | PM p27-28 |
 | Ramp symmetry | `SOURce{ch}:FUNCtion:RAMP:SYMMetry <NR2>[PCT]` | `…SYMMetry?` → `<NR2>` | 0.0-100.0 % | `50.0\n` (both ch, even while shape = SIN) | PM p26 |
-| Pulse duty | `SOURce{ch}:PULSe:DCYCle <NR2>[PCT]` | `…DCYCle?` → `<percent>` | limited by min width (≥24 ns) & period; coupled to WIDTh | - | PM p30-31, UM p47 |
+| Pulse duty | `SOURce{ch}:PULSe:DCYCle <NR2>[PCT]` | `…DCYCle?` → `<percent>` | limited by min width (≥24 ns) & period; coupled to WIDTh | report #13 (DGE2070, shape SQU / SIN): every pulse query answers a value and queues `-102,"Syntax error"` - the definition (1.1.1) reads them only while SHAPE = PUL; behaviour in PUL not yet observed | PM p30-31, UM p47 |
 | Pulse width / edges | `SOURce{ch}:PULSe:WIDTh\|TRANsition[:LEADing]\|TRANsition:TRAiling <t>[ns\|us\|ms\|s]` | `…?` → `<seconds>` | width ≥ 24 ns, edges ≥ 15 ns (UM p47) | - | PM p31-32 |
 | Square duty | **none** (square is fixed 50 %; no SQU:DCYC command) | - | - | - | PM p26 |
 | Sync output / channel couple / tracking | **no SCPI command, not in UM** (only panel "Align Phase", UM p42) | - | - | - | - |
