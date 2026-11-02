@@ -244,6 +244,10 @@ button.bench-pill:hover, button.bench-pill:focus-visible { color: var(--kit-ink)
   background: var(--kit-ctl-hi); border: 1px solid var(--kit-panel-edge); border-radius: var(--kit-r-ctl);
   font: 400 .78rem/1.4 var(--kit-font-label); color: var(--kit-ink-2);
 }
+.bench-modal__warning {
+  margin: 10px 0; padding: 8px 10px; border-left: 3px solid var(--kit-warn); border-radius: var(--kit-r-ctl);
+  background: var(--kit-ctl-hi); color: var(--kit-ink); font-size: .8rem;
+}
 .bench-modal__progress { margin: 12px 0 4px; }
 .bench-modal__progress i {
   display: block; height: 6px; border-radius: 3px; background: var(--kit-accent); transition: width .2s;
