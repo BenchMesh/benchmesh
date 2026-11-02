@@ -6,7 +6,7 @@ id: keysight_e4980a
 extends: scpi_lcr_e4980
 vendor: Keysight
 family: E4980A/AL precision LCR meter
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "qcodes_e4980a.py (BenchMeshDOC/keysight_e4980a)", pages: "l.158-461 (commands), l.218-242 (limits)"}
   - {note: "TRIG:SOUR / TRIG and CORR:OPEN (not in the QCoDeS driver) as in the E4980 / HP 4284A command tree, unverified here"}
@@ -36,7 +36,8 @@ commands:
     parse: [trim, upper, {split: {sep: ",", index: 0}}, trim, {map: {SHOR: FAST, SHORT: FAST, MED: MED, MEDIUM: MED, LONG: SLOW}}]
   aper_set:
     params: {s: {values: {FAST: SHOR, SLOW: LONG}}}
-  rang_q: {parse: [trim, number]}
+  # "+1.00000E+02" -> "100", the features.ranges value (LCR contract: range is text)
+  rang_q: {parse: [trim, number, text]}
   rang_set:
     params: {r: {values: {"1": "FUNC:IMP:RANG 1", "30": null}}}
   freq_set:
@@ -83,7 +84,7 @@ classes:
       - every_ms: 300
         read: [fetch, func_q, freq_q, volt_q, aper_q, rang_auto_q, rang_q, bias_stat_q, bias_volt_q]
     status:
-      RANGE: 'rang_auto_q == "ON" ? "AUTO" : string(int(rang_q))'
+      RANGE: 'rang_auto_q == "ON" ? "AUTO" : rang_q'
       BIAS: {expr: bias_volt_q, as: si}
       BIAS_ON: bias_stat_q
     operations:

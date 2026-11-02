@@ -12,7 +12,7 @@ id: keysight_infiniivision
 extends: scpi_osc
 vendor: Keysight
 family: InfiniiVision 1000 X / 2000 X / 3000T series oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "Keysight InfiniiVision 1000 X-Series Programmer's Guide v01.20 (1000X_ProgrammersGuide_v01.20_akmetron.pdf)", pages: "p3 models, p116 *IDN?, p137-163 root (:AUToscale :OPERegister:CONDition? :RUN :SINGle :STOP), p188-189 ACQuire, p205-219 CHANnel, p347 9.9E+37, p360-385 MEASure, p564-590 TIMebase/TRIGger, p630-648 WAVeform"}
   - {doc: "Agilent InfiniiVision 2000 X-Series Programmer's Guide v02.30 (2000X_ProgrammersGuide_xdevs.pdf)", pages: "p3 models, p130 *IDN? (AGILENT TECHNOLOGIES), p167 OPERegister, p220-234 CHANnel, p351-373 MEASure, p580-606 TIMebase/TRIGger, p639-644 WAVeform"}

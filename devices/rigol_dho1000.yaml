@@ -9,7 +9,7 @@ id: rigol_dho1000
 extends: scpi_osc
 vendor: RIGOL
 family: DHO1000/DHO4000 series digital oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "DHO1000/DHO4000 Programming Guide PGA34101-1110 (DHO1000-4000_ProgrammingGuide_EN.pdf)", pages: "PDF p24 models, p28-31 RUN/STOP/SINGle/CLEar/AUToset, p41 ACQuire:TYPE/SRATe, p94-102 CHANnel, p144 *IDN?, p196-197 MEASure:ITEM, p292-293 TIMebase, p301-307 TRIGger, p433-441 WAVeform"}
   - {note: "USB product id not in the guide: discovery matches the RIGOL vendor id. Raw SCPI socket 5555 as on other RIGOL scopes (not in the guide). GPIB only through the RIGOL USB-GPIB module (p23, not supported)."}

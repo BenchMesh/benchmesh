@@ -39,7 +39,8 @@ commands:
   scale_q: {send: ":CHANnel{ch}:SCALe?", parse: [trim, number], source: "CHANnel<n>:SCALe p59; includes the probe ratio"}
   offset_q: {send: ":CHANnel{ch}:OFFSet?", parse: [trim, number], source: "CHANnel<n>:OFFSet p57"}
   coup_q: {send: ":CHANnel{ch}:COUPling?", parse: [trim], source: "CHANnel<n>:COUPling p52; DC, AC or GND"}
-  probe_q: {send: ":CHANnel{ch}:PROBe?", parse: [trim, number], source: "CHANnel<n>:PROBe p58"}
+  # the ratio as text, like the setter's values ("0.1", "10"; OSC contract: string); status PROBE: num()
+  probe_q: {send: ":CHANnel{ch}:PROBe?", parse: [trim, number, text], source: "CHANnel<n>:PROBe p58"}
   bwl_q:
     send: ":CHANnel{ch}:BWLimit?"
     parse: [trim, {map: {"FULL": "OFF", "20M": "20M", "200M": "200M"}}]
@@ -246,7 +247,7 @@ classes:
       SCALE: {expr: scale_q, as: si}
       OFFSET: {expr: offset_q, as: si}
       COUPLING: coup_q
-      PROBE: probe_q
+      PROBE: num(probe_q)
       BWLIMIT: bwl_q
       INVERT: inv_q
       TIMEBASE: {expr: tb_q, as: si}

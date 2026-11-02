@@ -77,6 +77,18 @@ fn apply(step: &ParseStep, cur: Cur) -> Result<Cur, Error> {
             let n = lenient_number(&t).ok_or_else(|| Error::Parse(format!("not a number: {t:?}")))?;
             Ok(Cur::Val(json!(n)))
         }
+        ParseStep::Text => {
+            let n = match cur {
+                Cur::Val(Value::Number(n)) => n.as_f64().unwrap_or(0.0),
+                other => {
+                    let t = other.text("text")?;
+                    lenient_number(&t).ok_or_else(|| Error::Parse(format!("text: not a number: {t:?}")))?
+                }
+            };
+            // 12 significant digits, as `scale`: no binary floating point noise in the text
+            let x: f64 = format!("{n:.11e}").parse().unwrap_or(n);
+            s(format!("{x}"))
+        }
         ParseStep::Scale(k) => {
             let n = match cur {
                 Cur::Val(Value::Number(n)) => n.as_f64().unwrap_or(0.0),
@@ -227,6 +239,18 @@ mod tests {
         assert_eq!(parse_reply(&c, b"0.988 ").unwrap(), json!(0.988));
         assert_eq!(parse_reply(&c, b"+0.0000E-308").unwrap(), json!(0.0));
         assert!(parse_reply(&c, b"OL").is_err());
+    }
+
+    #[test]
+    fn text_writes_a_number_as_its_shortest_decimal() {
+        let c = cmd("send: x\nparse: [trim, number, text]");
+        assert_eq!(parse_reply(&c, b"1.000000e+01\n").unwrap(), json!("10"));
+        assert_eq!(parse_reply(&c, b"1").unwrap(), json!("1"));
+        assert_eq!(parse_reply(&c, b"1.000000e-01").unwrap(), json!("0.1"));
+        assert_eq!(parse_reply(&c, b"0.001").unwrap(), json!("0.001"));
+        let c = cmd("send: x\nparse: [trim, text]");
+        assert_eq!(parse_reply(&c, b"+1.0E+03").unwrap(), json!("1000"), "from text too");
+        assert!(parse_reply(&c, b"10X").is_err());
     }
 
     #[test]

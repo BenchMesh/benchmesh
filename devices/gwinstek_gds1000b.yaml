@@ -11,7 +11,7 @@ schema: benchmesh.device/v1
 id: gwinstek_gds1000b
 vendor: GW Instek
 family: GDS-1000B series digital oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "GDS-1000B Programming Manual (GDS-1000B_Programming_Manual.pdf); printed page = PDF page", pages: "p5-7 USB CDC, p8-12 LAN / socket server, p16-17 syntax, p29 *IDN?, p36-41 ACQuire/HEADer, p42 AUTOSet, p43-48 CHANnel, p77-93 MEASure, p112 RUN/STOP/SINGle, p114-115 TIMebase, p119-122 TRIGger, p131-132 TRIGger:STATe?"}
   - {note: "Model list from GW Instek's GDS-1000B range (the manual names GDS-1074B/1102B/1104B in examples). Horizontal divisions (10) and the time origin (position - 5 div) are not stated in the manual"}
@@ -50,7 +50,7 @@ commands:
   scale_q: {send: ":CHANnel{ch}:SCALe?", parse: [trim, number], source: "CHANnel<X>:SCALe p47-48"}
   offset_q: {send: ":CHANnel{ch}:POSition?", parse: [trim, number], source: "CHANnel<X>:POSition p46; volts, 2.4E-3"}
   coup_q: {send: ":CHANnel{ch}:COUPling?", parse: [trim, upper], source: "CHANnel<X>:COUPling p44; AC, DC or GND"}
-  probe_q: {send: ":CHANnel{ch}:PROBe:RATio?", parse: [trim, number], source: "CHANnel<X>:PROBe:RATio p47"}
+  probe_q: {send: ":CHANnel{ch}:PROBe:RATio?", parse: [trim, number, text], source: "CHANnel<X>:PROBe:RATio p47; the ratio as text like the setter's values (OSC contract: string)"}
   bwl_q:
     send: ":CHANnel{ch}:BWLimit?"
     parse: [trim, upper, {map: {"FULL": "OFF", "_": "20M"}}]
@@ -227,7 +227,7 @@ classes:
       SCALE: {expr: scale_q, as: si}
       OFFSET: {expr: offset_q, as: si}
       COUPLING: coup_q
-      PROBE: probe_q
+      PROBE: num(probe_q)
       BWLIMIT: bwl_q
       INVERT: inv_q
       TIMEBASE: {expr: tb_q, as: si}

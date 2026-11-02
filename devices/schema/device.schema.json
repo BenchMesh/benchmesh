@@ -618,6 +618,11 @@
           "type": "string"
         },
         {
+          "const": "text",
+          "description": "A number as its shortest decimal text (`1.000000e+01` -> `\"10\"`, `0.1` -> `\"0.1\"`): a\nvalue the class contract wants as text, written like the setter's values.",
+          "type": "string"
+        },
+        {
           "additionalProperties": false,
           "description": "Multiply a number (scaled-integer replies: `{scale: 0.01}` turns `1270` into 12.7).",
           "properties": {

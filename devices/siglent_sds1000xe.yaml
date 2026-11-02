@@ -14,7 +14,7 @@ schema: benchmesh.device/v1
 id: siglent_sds1000xe
 vendor: Siglent
 family: SDS1000X-E series digital oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "Digital Oscilloscope Series Programming Guide EN02E (Oscilloscope_ProgrammingGuide_legacy.pdf)", pages: "PDF p16 LAN 5025, p24 CHDR, p28-36 ARM/STOP/ACQW/SARA/SANU, p34 SAST, p40 ASET, p42-50 channel, p118 PAVA, p173-174 TDIV/TRDL, p185-194 TRLV/TRMD/TRSE/TRSL, p247-256 WF/WFSU, p309 USB id F4EC:EE38"}
   - {note: "Some SDS1000X-E units enumerate as f4ed:ee3a (sigrok udev rules): matched on the vendor id when the product id differs"}
@@ -62,8 +62,8 @@ commands:
     source: "COUPLING p44; A1M, A50, D1M, D50 or GND"
   probe_q:
     send: "C{ch}:ATTN?"
-    parse: [trim, {regex: {pattern: "^[-+]?[0-9.]+([eE][-+]?[0-9]+)?", group: 0}}, number]
-    source: "ATTENUATION p42"
+    parse: [trim, {regex: {pattern: "^[-+]?[0-9.]+([eE][-+]?[0-9]+)?", group: 0}}, number, text]
+    source: "ATTENUATION p42; the ratio as text like the setter's values (OSC contract: string)"
   bwl_q: {send: "BWL?", parse: [trim], source: "BANDWIDTH_LIMIT p43; C1,ON,C2,OFF,… for all channels"}
   inv_q: {send: "C{ch}:INVS?", parse: [trim], source: "INVERTSET p50; ON or OFF"}
   disp_set:
@@ -277,7 +277,7 @@ classes:
       SCALE: {expr: scale_q, as: si}
       OFFSET: {expr: offset_q, as: si}
       COUPLING: coup_q
-      PROBE: probe_q
+      PROBE: num(probe_q)
       BWLIMIT: "bwl_q == null ? null : (bwl_q.contains('C' + string(ch) + ',ON') ? '20M' : 'OFF')"
       INVERT: inv_q
       TIMEBASE: {expr: tb_q, as: si}

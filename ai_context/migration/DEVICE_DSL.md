@@ -127,6 +127,9 @@ active function (`from: meas_func`).
 ### Parse steps
 Unit steps are strings, others single-key maps:
 `trim`, `unquote`, `lower`, `upper`, `number` (f64, accepts `+1.0E-04` and `+0.0000E-308`),
+`text` (a number as its shortest decimal text: `1.000000e+01` -> `"10"`, `0.1` -> `"0.1"`; for an
+operation the class contract wants as text, written like the setter's values - a status that
+needs the number reads it back with `num()`),
 `byte` (first byte as integer), `{split: {sep, index}}`, `{fields: {sep, names}}` (→ map),
 `{regex: {pattern, group}}`, `{replace: {from, to}}`, `{map: {raw: value}}` (unmapped = error
 unless `_` key), `{bits: {name: "N" | "A..B"}}` (→ map of bool/int), `{null_if: [raw...]}`,
@@ -156,7 +159,9 @@ Schema id; regexes compile (models, params, parse); template placeholders ↔ pa
 params have values; number formats; rx-mode consistency; identify/session/before/poll/
 operation references exist; polls only use replying, `query`-safety, param-free commands;
 CEL expressions parse and reference only known variables; status keys and operation `as`
-match the class contract types; required class status keys and operation directions are
+match the class contract types; an operation the contract wants as text (string, enum) is not
+read with a parse that ends in a number (`number`, `scale`, `byte`: end it with `text` or map the
+values); required class status keys and operation directions are
 bound; `effects` target declared state; `requires` messages present; unused commands warn.
 
 ## Authoring checklist (human or LLM)

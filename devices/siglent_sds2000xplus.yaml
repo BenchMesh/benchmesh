@@ -9,7 +9,7 @@ id: siglent_sds2000xplus
 extends: siglent_scope
 vendor: Siglent
 family: SDS2000X Plus series digital oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "SDS Series Programming Guide EN11F (SDS_Series_ProgrammingGuide.pdf)", pages: "PDF p18 supported models (SDS2000X Plus from firmware 1.3.5R3), p30 *IDN?, p41-47 ACQuire (RESolution p43), p50-60 CHANnel, p304 MEASure:SIMPle:VALue?, p412-431 TIMebase/TRIGger, p683-695 WAVeform (WIDTh p689, DATA p693)"}
   - {note: "USBTMC product id not in the guide: matched on the Siglent vendor id f4ec"}

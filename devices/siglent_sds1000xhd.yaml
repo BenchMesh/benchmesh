@@ -7,7 +7,7 @@ id: siglent_sds1000xhd
 extends: siglent_scope
 vendor: Siglent
 family: SDS1000X HD series digital oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "SDS Series Programming Guide EN11F (SDS1000XHD_Series_ProgrammingGuide.pdf)", pages: "PDF p18 supported models (SDS1000X HD from firmware 1.1.0.2), p30 *IDN?, p41-47 ACQuire, p50-60 CHANnel, p304 MEASure:SIMPle:VALue?, p412-431 TIMebase/TRIGger, p683-695 WAVeform (WIDTh p689, DATA p693)"}
   - {note: "USBTMC product id not in the guide: matched on the Siglent vendor id f4ec"}

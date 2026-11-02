@@ -11,7 +11,7 @@ id: unit_upo2000
 extends: scpi_osc
 vendor: UNI-T
 family: MSO/UPO2000CS series digital phosphor oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "MSO/UPO2000 Series Programming Manual V1.0 (MSOUPO2000_Programming_Manual_V1.0.pdf)", pages: "PDF p4 data return (* = invalid), p5 *IDN?, p6 RUN/STOP/AUTO, p14-16 CHANnel, p17-18 TIMebase, p34-37 MEASure, p41-44 TRIGger, p75-76 ACQuire, p79 DISPlay:CLEar, p79-84 WAVeform"}
   - {note: "USB vendor id 5656 (Uni-Trend) from the coverage research, not in the manual; the manual documents LAN only through VISA/VXI-11 (no raw socket port), so no tcp link"}

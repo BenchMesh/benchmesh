@@ -124,6 +124,22 @@ fn validator_rejects_broken_definitions() {
     );
     assert_rejected(tenma_errors_after(|v| at(v, &["commands", "vout"])["colour"] = "red".into()), "unknown field `colour`");
     assert_rejected(tenma_errors_after(|v| *at(v, &["identify"]) = "output".into()), "identify command must have a reply");
+    // a reply parsed to a number for an operation the contract wants as text (OSC probe "1" vs 1.0)
+    assert_rejected(
+        tenma_errors_after(|v| {
+            at(v, &["classes", "PSU", "operations", "output"])["get"] = "vset_q".into();
+        }),
+        "parsed to a number",
+    );
+    assert!(
+        tenma_errors_after(|v| {
+            at(v, &["classes", "PSU", "operations", "output"])["get"] = "vset_q".into();
+            at(v, &["commands", "vset_q", "parse"]).as_sequence_mut().unwrap().push("text".into());
+        })
+        .iter()
+        .all(|e| !e.contains("parsed to a number")),
+        "ending the parse with `text` is accepted"
+    );
 }
 
 /// Wire commands the Python service sent that the definitions deliberately do not produce.

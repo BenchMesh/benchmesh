@@ -692,6 +692,9 @@ pub enum ParseStep {
     Upper,
     /// Parse as a floating point number.
     Number,
+    /// A number as its shortest decimal text (`1.000000e+01` -> `"10"`, `0.1` -> `"0.1"`): a
+    /// value the class contract wants as text, written like the setter's values.
+    Text,
     /// Multiply a number (scaled-integer replies: `{scale: 0.01}` turns `1270` into 12.7).
     Scale(f64),
     /// ASCII list of numbers → list (`-80.1,-79.9,…`): separated by commas, semicolons or

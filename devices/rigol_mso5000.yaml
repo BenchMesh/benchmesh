@@ -9,7 +9,7 @@ id: rigol_mso5000
 extends: scpi_osc
 vendor: RIGOL
 family: MSO5000 series digital oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "MSO5000 Programming Guide PGA25105-1110 (MSO5000_ProgrammingGuide_EN.pdf)", pages: "PDF p4 models, p18-19 AUToscale/CLEar/RUN/STOP/SINGle, p21-22 ACQuire, p62-65 CHANnel, p136-137 MEASure:ITEM, p189-190 TIMebase, p194-198 TRIGger, p260-266 WAVeform, p269 USB id"}
   - {note: "Raw SCPI socket 5555 as on other RIGOL scopes (not in the guide). GPIB only through the RIGOL USB-GPIB module (p4, not supported)."}

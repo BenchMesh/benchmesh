@@ -8,7 +8,7 @@ id: rigol_ds1000z
 extends: scpi_osc
 vendor: RIGOL
 family: MSO1000Z/DS1000Z/DS1000Z-E series digital oscilloscope
-version: 0.1.0
+version: 0.1.1
 sources:
   - {doc: "MSO1000Z/DS1000Z Programming Guide PGA19108-1110 (DS1000Z_ProgrammingGuide_EN.pdf)", pages: "PDF p4 models, p14 USB id, p22-23 ACQuire, p25-30 CHANnel, p96 *IDN?, p141 MEASure:ITEM, p172-179 TIMebase/TRIGger, p233-242 WAVeform"}
   - {doc: "DS1000Z-E Programming Guide PGA27101-1110 (DS1000ZE_ProgrammingGuide_EN.pdf)", pages: "PDF p4 models, p14 USB id, p137 timebase 2 ns-50 s, p142 edge source"}

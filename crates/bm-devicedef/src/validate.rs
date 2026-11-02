@@ -72,6 +72,15 @@ fn expected_repr(kind: ValueKind) -> Repr {
     }
 }
 
+/// The parse steps leave a number (the last step that decides the kind is a numeric one).
+fn parses_to_number(steps: &[ParseStep]) -> bool {
+    steps
+        .iter()
+        .rev()
+        .find(|s| !matches!(s, ParseStep::NullIf(_)))
+        .is_some_and(|s| matches!(s, ParseStep::Number | ParseStep::Scale(_) | ParseStep::Byte))
+}
+
 fn number_format_ok(f: &str) -> bool {
     NUMBER_FORMAT.is_match(f)
 }
@@ -549,6 +558,15 @@ fn check_binding(d: &DeviceDef, class: &str, b: &ClassBinding, spec: Option<&Cla
                 }
                 if expected_repr(os.value) != o.repr {
                     cx.err(format!("{op_at}.as"), format!("class contract value is {:?}; set `as: {:?}`", os.value, expected_repr(os.value)).to_lowercase());
+                }
+                let text = matches!(os.value, ValueKind::String | ValueKind::Enum);
+                if let Some(last) = steps.last().and_then(|s| d.commands.get(s.command())) {
+                    if text && o.repr == Repr::Raw && parses_to_number(&last.parse) {
+                        cx.err(
+                            format!("{op_at}.get"),
+                            format!("`{}` is parsed to a number; the class contract wants text ({}): end its parse with `text`, or map the values", steps.last().unwrap().command(), format!("{:?}", os.value).to_lowercase()),
+                        );
+                    }
                 }
             }
         }
