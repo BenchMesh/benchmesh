@@ -98,7 +98,7 @@ Instruments → **About** (`about/AboutTab.tsx`): build, version (official only)
 adds (the official build: **Updates**); Instruments → **Online** (`online/OnlineTab.tsx`) only when a distribution adds
 groups (the official build: BenchMesh account and activity). A group may stop BenchMesh (`onStopping`): the tab waits
 and reloads (`system/comeback.tsx`). Official releases include Linux ARM64 (Raspberry Pi 4/5); CI tests the desktop app
-on ARM and the server's system code on Windows and macOS.
+on ARM and the server's system code on Windows (macOS is off for now, as are the Mac release builds).
 
 **Automation, assistant, MCP** (contract `ai_context/AUTOMATION.md`): flows are JSON documents
 (`benchmesh.flow/v1`: params, setup / steps / cleanup-always-runs; steps set, read, wait, let,
@@ -324,7 +324,7 @@ npm run test:e2e       # Playwright against a preview build with a mocked API (C
 ## CI and releases
 
 `.github/workflows/README.md`: `ci.yaml` (frontend lint/tests/build, Rust clippy/tests/definition
-validation, transport on Windows and macOS), `e2e-tests.yml`. Releases: bump the version (`Cargo.toml`,
+validation, transport on Windows; macOS off for now), `e2e-tests.yml`. Releases are built without Mac for now (services `release.yml` input `macos`, default off). Releases: bump the version (`Cargo.toml`,
 `crates/benchmesh-app/tauri.conf.json`) and refresh the community status snapshot (`scripts/community-status.sh`)
 on `develop`, tag `vX.Y.Z`, push; then the release workflow of
 `BenchMesh/services` builds the draft release here; publish with `gh release edit vX.Y.Z --draft=false -R BenchMesh/benchmesh-app`.

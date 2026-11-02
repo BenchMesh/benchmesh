@@ -102,7 +102,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        # macOS is off: GitHub's Mac runners were often not available and releases are built without
+        # Mac for now (services release.yml `macos`); add macos-latest back with the Mac builds
+        os: [windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository
