@@ -4,7 +4,7 @@ schema: benchmesh.device/v1
 id: owon_dge
 vendor: OWON
 family: DGE2000 series arbitrary waveform generator
-version: 1.1.0
+version: 1.1.1
 sources:
   - {doc: "DGE2000/3000 SCPI Protocol", pages: "5-39"}
   - {doc: "DGE2000 Arbitrary Waveform Generator User Manual", pages: "38-49"}
@@ -235,10 +235,13 @@ commands:
     safety: configure
     source: "PM p15; UM spec trigger source internal, manual"
   # ---- pulse (duty applies to the pulse waveform; the square is fixed at 50 %)
-  pul_dcyc:  {send: "SOURce{ch}:PULSe:DCYCle?", parse: [trim, number], source: "PM p26"}
-  pul_width: {send: "SOURce{ch}:PULSe:WIDTh?", parse: [trim, number], source: "PM p28"}
-  pul_lead:  {send: "SOURce{ch}:PULSe:TRANsition?", parse: [trim, number], source: "PM p27"}
-  pul_trail: {send: "SOURce{ch}:PULSe:TRANsition:TRAiling?", parse: [trim, number], source: "PM p27"}
+  # Read only while the channel's shape is PULSe: a DGE2070 in SQU / SIN answers these
+  # queries but also queues -102 "Syntax error" for each (report #13, every poll); a
+  # refused read sends nothing and the status is unknown.
+  pul_dcyc:  {send: "SOURce{ch}:PULSe:DCYCle?", requires: {expr: 'shape_q == "PUL"', message: "pulse settings are read only while the shape is PUL"}, parse: [trim, number], source: "PM p26"}
+  pul_width: {send: "SOURce{ch}:PULSe:WIDTh?", requires: {expr: 'shape_q == "PUL"', message: "pulse settings are read only while the shape is PUL"}, parse: [trim, number], source: "PM p28"}
+  pul_lead:  {send: "SOURce{ch}:PULSe:TRANsition?", requires: {expr: 'shape_q == "PUL"', message: "pulse settings are read only while the shape is PUL"}, parse: [trim, number], source: "PM p27"}
+  pul_trail: {send: "SOURce{ch}:PULSe:TRANsition:TRAiling?", requires: {expr: 'shape_q == "PUL"', message: "pulse settings are read only while the shape is PUL"}, parse: [trim, number], source: "PM p27"}
   pul_dcyc_set:
     send: "SOURce{ch}:PULSe:DCYCle {pct}"
     params: {pct: {type: number, min: 0, max: 100, format: "%.1f", unit: "%"}}
