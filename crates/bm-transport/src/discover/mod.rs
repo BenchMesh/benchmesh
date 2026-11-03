@@ -130,6 +130,26 @@ pub(crate) fn windows_usbtmc_instance(path: &str) -> Option<String> {
     windows::usbtmc_ports().into_iter().find(|(p, _, _)| p.path.eq_ignore_ascii_case(path)).map(|(_, _, id)| id)
 }
 
+/// Windows: the driver (service) of the attached USB device `vid`:`pid` (`""`: none installed),
+/// `None` when it is not attached. Other systems need no driver for `nusb`: always `None`.
+pub fn windows_usb_service(vid: u16, pid: u16) -> Option<String> {
+    #[cfg(windows)]
+    {
+        windows::usb_devices(vid, pid).into_iter().next().map(|(service, _)| service)
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = (vid, pid);
+        None
+    }
+}
+
+/// Instance id of the device node of the attached USB device `vid`:`pid`.
+#[cfg(windows)]
+pub(crate) fn windows_usb_instance(vid: u16, pid: u16) -> Option<String> {
+    windows::usb_devices(vid, pid).into_iter().next().map(|(_, id)| id)
+}
+
 /// Windows reports serial numbers in instance ids without their original case.
 #[cfg(windows)]
 fn same_serial(a: Option<&str>, b: Option<&str>) -> bool {

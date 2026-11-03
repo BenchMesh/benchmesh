@@ -50,6 +50,10 @@ does. Nothing is shipped, downloaded or self-signed. A declined prompt → 403. 
 re-enumerates, the UI re-reads the lists after 2 s, and configured instruments reconnect on
 their own. Undo: Device Manager → Uninstall device (delete the driver). Replacing a vendor
 driver this way hides the instrument from that vendor's software.
+A USB device that is not an instrument (a distribution's sensor adapter) is named by its ids only,
+`usb:1a86:5512` (`winusb::install_usb_id`, `usb_id_path`; no instrument path has that form):
+the helper binds the first attached device node with those ids (`discover::windows_usb_service`
+tells whether one is attached and which driver it has).
 (First Windows test, 2026-10-18: neither the Rigol DHO800 nor the OWON DGE2070 was listed -
 most likely because neither had a driver; not yet confirmed.)
 

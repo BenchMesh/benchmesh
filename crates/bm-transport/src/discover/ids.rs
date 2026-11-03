@@ -20,6 +20,13 @@ pub(crate) fn win_is_usb_device(instance_id: &str) -> bool {
     upper.starts_with("USB\\VID_") && !upper.contains("&MI_")
 }
 
+/// A Windows instance (or hardware) id of the USB device `vid`:`pid`.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub(crate) fn win_is_usb_id(id: &str, vid: u16, pid: u16) -> bool {
+    let (v, p, _) = win_hardware_id(id);
+    v == Some(format!("{vid:04x}")) && p == Some(format!("{pid:04x}"))
+}
+
 /// A Windows compatible id of a USBTMC interface: `USB\Class_FE&SubClass_03&Prot_01` (any
 /// protocol). Reported by the USB bus for every device, whether a driver is installed or not.
 #[cfg_attr(not(windows), allow(dead_code))]
@@ -102,5 +109,13 @@ mod tests {
         assert_eq!(mac_location(0x14320000).as_deref(), Some("0x14320000"));
         assert_eq!(mac_location(0x00100000).as_deref(), Some("0x00100000"));
         assert_eq!(mac_location(-1), None);
+    }
+
+    #[test]
+    fn usb_ids_are_matched_in_instance_ids() {
+        assert!(win_is_usb_id(r"USB\VID_1A86&PID_5512\5&2A3B4C5D&0&4", 0x1a86, 0x5512));
+        assert!(win_is_usb_id(r"USB\vid_1a86&pid_5512&REV_0304", 0x1a86, 0x5512));
+        assert!(!win_is_usb_id(r"USB\VID_1A86&PID_7523\5&2A3B4C5D&0&4", 0x1a86, 0x5512));
+        assert!(!win_is_usb_id(r"ACPI\PNP0501\0", 0x1a86, 0x5512));
     }
 }

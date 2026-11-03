@@ -1,4 +1,5 @@
-//! Windows: give a USBTMC instrument Microsoft's generic WinUSB driver (the in-box `winusb.inf`),
+//! Windows: give a USBTMC instrument - or a USB device named by its vendor and product id, such as
+//! an adapter a distribution reads sensors through - Microsoft's generic WinUSB driver (the in-box `winusb.inf`),
 //! the same as Device Manager → Update driver → Browse → Let me pick → Universal Serial Bus
 //! devices → WinUsb Device. Nothing ships with BenchMesh, nothing is downloaded or self-signed.
 //!
@@ -22,7 +23,25 @@ pub fn helper_main() -> Option<i32> {
     Some(if r.is_ok() { 0 } else { 1 })
 }
 
-/// Give the instrument at `usb:` path `path` the WinUSB driver. Blocks until the elevated helper
+/// `usb:1a86:5512`: a USB device named by its vendor and product id only. No instrument path has
+/// this form (those carry a serial number or `@location`).
+pub fn usb_id_path(vid: u16, pid: u16) -> String {
+    format!("{}{vid:04x}:{pid:04x}", crate::usbtmc_nusb::PREFIX)
+}
+
+/// The vendor and product id of a [`usb_id_path`].
+pub fn parse_usb_id_path(path: &str) -> Option<(u16, u16)> {
+    let (v, p) = path.strip_prefix(crate::usbtmc_nusb::PREFIX)?.split_once(':')?;
+    let hex = |s: &str| (s.len() == 4 && s.chars().all(|c| c.is_ascii_hexdigit())).then(|| u16::from_str_radix(s, 16).ok()).flatten();
+    Some((hex(v)?, hex(p)?))
+}
+
+/// Give the attached USB device `vid`:`pid` the WinUSB driver (see [`install`]).
+pub fn install_usb_id(vid: u16, pid: u16) -> io::Result<()> {
+    install(&usb_id_path(vid, pid))
+}
+
+/// Give the instrument at `usb:` path `path` (or the device of a [`usb_id_path`]) the WinUSB driver. Blocks until the elevated helper
 /// is done (including the time the user takes to answer the UAC prompt).
 pub fn install(path: &str) -> io::Result<()> {
     if path.contains('"') || !path.starts_with(crate::usbtmc_nusb::PREFIX) {
@@ -99,7 +118,8 @@ mod imp {
 
     pub fn bind(path: &str) -> io::Result<()> {
         let id = crate::discover::windows_usbtmc_instance(path)
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("{path}: no such USBTMC instrument attached")))?;
+            .or_else(|| super::parse_usb_id_path(path).and_then(|(vid, pid)| crate::discover::windows_usb_instance(vid, pid)))
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotFound, format!("{path}: no such USB device attached")))?;
         // SAFETY: no class GUID, no window.
         let set = unsafe { SetupDiCreateDeviceInfoList(ptr::null(), 0) };
         if set == INVALID_HANDLE_VALUE {
@@ -220,5 +240,15 @@ mod tests {
     #[test]
     fn a_normal_start_is_not_the_helper() {
         assert_eq!(helper_main(), None);
+    }
+
+    #[test]
+    fn a_device_is_named_by_its_ids_in_a_form_no_instrument_path_has() {
+        assert_eq!(usb_id_path(0x1a86, 0x5512), "usb:1a86:5512");
+        assert_eq!(parse_usb_id_path("usb:1a86:5512"), Some((0x1a86, 0x5512)));
+        assert_eq!(parse_usb_id_path(&crate::usbtmc_nusb::path_of(0x1ab1, 0x044d, Some("DHO8A1"), "")), None);
+        assert_eq!(parse_usb_id_path(&crate::usbtmc_nusb::path_of(0x1ab1, 0x044d, None, "1-2")), None);
+        assert_eq!(parse_usb_id_path("usb:1a86:55"), None);
+        assert_eq!(parse_usb_id_path("1a86:5512"), None);
     }
 }

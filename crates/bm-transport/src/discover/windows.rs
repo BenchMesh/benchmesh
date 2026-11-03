@@ -7,7 +7,8 @@
 //!
 //! USBTMC instruments: every present USB node whose compatible ids name the USBTMC class (the
 //! device itself or, for a composite device, its interface), with the driver Windows bound to
-//! it. Listed also when no driver is installed (such devices are invisible to `nusb`).
+//! it. Listed also when no driver is installed (such devices are invisible to `nusb`), as is any
+//! USB device asked for by its vendor and product id (`usb_devices`).
 
 use std::ptr;
 
@@ -21,7 +22,7 @@ use windows_sys::Win32::Devices::Properties::{DEVPKEY_Device_BusReportedDeviceDe
 use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
 use windows_sys::Win32::System::Registry::{RegCloseKey, RegQueryValueExW, KEY_READ, REG_SZ};
 
-use super::ids::{win_hardware_id, win_instance_serial, win_is_usb_device, win_is_usbtmc_compatible_id};
+use super::ids::{win_hardware_id, win_instance_serial, win_is_usb_device, win_is_usb_id, win_is_usbtmc_compatible_id};
 use super::{text, Port, PortKind, UsbInfo};
 
 /// Device-tree levels walked up from the COM port (port → interface/FTDIBUS → USB device).
@@ -199,6 +200,35 @@ pub fn usbtmc_ports() -> Vec<(Port, String, String)> {
         let service = registry_property(info.DevInst, CM_DRP_SERVICE).unwrap_or_default();
         let Some(instance_id) = device_id(info.DevInst) else { continue };
         out.push((Port { kind: PortKind::Usbtmc, path, usb }, service, instance_id));
+    }
+    // SAFETY: `set` came from SetupDiGetClassDevsW and is destroyed exactly once.
+    unsafe { SetupDiDestroyDeviceInfoList(set) };
+    out
+}
+
+/// Each attached USB device (the device node, not an interface of a composite device) with the
+/// vendor and product id `vid`:`pid`: the service (driver) Windows bound to it (`""` when none
+/// is installed) and its instance id. Listed whatever its driver, unlike in `nusb`.
+pub fn usb_devices(vid: u16, pid: u16) -> Vec<(String, String)> {
+    let usb = wide("USB");
+    // SAFETY: no class GUID (all classes), a valid enumerator string, no window.
+    let set = unsafe { SetupDiGetClassDevsW(ptr::null(), usb.as_ptr(), 0, DIGCF_ALLCLASSES | DIGCF_PRESENT) };
+    if set == INVALID_HANDLE_VALUE {
+        return Vec::new();
+    }
+    let mut out = Vec::new();
+    for index in 0.. {
+        // SAFETY: SP_DEVINFO_DATA is plain data; all-zero is valid before setting cbSize.
+        let mut info: SP_DEVINFO_DATA = unsafe { std::mem::zeroed() };
+        info.cbSize = std::mem::size_of::<SP_DEVINFO_DATA>() as u32;
+        // SAFETY: `set` is live and `info` has its cbSize set.
+        if unsafe { SetupDiEnumDeviceInfo(set, index, &mut info) } == 0 {
+            break;
+        }
+        let Some(id) = device_id(info.DevInst) else { continue };
+        if win_is_usb_device(&id) && win_is_usb_id(&id, vid, pid) {
+            out.push((registry_property(info.DevInst, CM_DRP_SERVICE).unwrap_or_default(), id));
+        }
     }
     // SAFETY: `set` came from SetupDiGetClassDevsW and is destroyed exactly once.
     unsafe { SetupDiDestroyDeviceInfoList(set) };

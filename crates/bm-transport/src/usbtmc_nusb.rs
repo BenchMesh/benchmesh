@@ -63,8 +63,7 @@ fn devices() -> Vec<DeviceInfo> {
     nusb::list_devices().wait().map(|it| it.filter(|d| d.interfaces().any(|i| is_usbtmc(i.class(), i.subclass()))).collect()).unwrap_or_default()
 }
 
-/// A Windows service (driver) nusb can open a USBTMC interface through.
-#[cfg(windows)]
+/// A Windows service (driver) nusb can open a USB device (a USBTMC interface) through: WinUSB.
 pub fn usable_service(service: &str) -> bool {
     service.eq_ignore_ascii_case("winusb")
 }

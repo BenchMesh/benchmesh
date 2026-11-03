@@ -51,4 +51,13 @@ describe('InstallDriverButton', () => {
     expect(screen.getByRole('button', { name: 'Install driver' })).not.toBeDisabled()
     expect(onInstalled).not.toHaveBeenCalled()
   })
+
+  it('runs the install of another device', async () => {
+    const install = vi.fn(() => Promise.resolve())
+    render(<InstallDriverButton install={install} title="Give the adapter WinUSB" onInstalled={() => {}} />)
+    expect(screen.getByRole('button', { name: 'Install driver' }).title).toBe('Give the adapter WinUSB')
+    fireEvent.click(screen.getByRole('button', { name: 'Install driver' }))
+    await waitFor(() => expect(screen.getByRole('button').textContent).toBe('✓ Driver installed'))
+    expect(install).toHaveBeenCalledOnce()
+  })
 })

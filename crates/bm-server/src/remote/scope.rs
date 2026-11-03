@@ -14,7 +14,7 @@ pub enum Scope {
     /// The computer: resources, restart / shut down and start with the computer of a headless
     /// server (headless, everything is done remotely).
     System,
-    /// Remote access itself, MCP, assistant keys, the Windows driver install: this computer only.
+    /// Remote access itself, MCP, assistant keys, the Windows driver installs: this computer only.
     Admin,
 }
 
@@ -30,6 +30,8 @@ pub fn of(method: &Method, path: &str) -> Scope {
         ["usbtmc-devices"] if method == Method::GET => Scope::Configuration,
         ["recordings", ..] | ["ws", "recordings"] => Scope::Recordings,
         ["system", ..] => Scope::System,
+        // a driver install asks for administrator approval on this computer
+        ["sensors", .., "driver"] => Scope::Admin,
         // settings of sensors a distribution adds (the official build: the environmental sensor)
         ["sensors", ..] => Scope::Configuration,
         ["automation", "mcp"] => Scope::Admin,
@@ -76,6 +78,7 @@ mod tests {
         assert_eq!(s("POST", "/system/restart"), Scope::System, "headless, the browser is the only way to restart");
         assert_eq!(s("PUT", "/system/autostart"), Scope::System);
         assert_eq!(s("PUT", "/sensors/environmental"), Scope::Configuration);
+        assert_eq!(s("POST", "/sensors/environmental/driver"), Scope::Admin, "the Windows driver install of a sensor adapter");
         assert_eq!(s("GET", "/something-new"), Scope::Admin, "unknown routes are local-only");
     }
 
