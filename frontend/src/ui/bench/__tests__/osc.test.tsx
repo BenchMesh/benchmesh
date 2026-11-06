@@ -105,3 +105,43 @@ describe('bandwidth limit', () => {
     await waitFor(() => expect(posts).toContain('/OSC/rigol-dho804/1/bwlimit/250M'))
   })
 })
+
+describe('OscPanel input impedance', () => {
+  const methods = [...fx.methods, { name: 'impedance', http_method: 'POST', value: { type: 'enum', values: ['1M', '50'] } }]
+  const features = { ...fx.features, impedance_50_limit: '5 Vrms' }
+  const withImpedance = oscProfile(features, setterMap(methods), 4)
+  const at = (impedance: string) => ({ 'rigol-dho804': { IDN: 'x', OSC: { status_ch1: { ...ch1, IMPEDANCE: impedance }, status_ch2: off, status_ch3: off, status_ch4: off } } })
+  const show = (impedance: string, p = withImpedance) => render(
+    <RequestLogProvider>
+      <OscPanel id="rigol-dho804" channels={['1', '2', '3', '4']} registry={at(impedance)} profile={p} online />
+    </RequestLogProvider>,
+  )
+  const choice = (name: string) => within(screen.getByRole('group', { name: 'CH1 input impedance' })).getByRole('button', { name })
+
+  it('is not offered by an instrument without the setter', () => {
+    show('1M', profile)
+    expect(screen.queryByRole('group', { name: 'CH1 input impedance' })).toBeNull()
+  })
+
+  it('asks a second press for 50 ohm, naming the input limit, then sends it', async () => {
+    show('1M')
+    fireEvent.click(choice('50 Ω'))
+    expect(screen.getByRole('alert')).toHaveTextContent('Press 50 Ω again: this input takes at most 5 Vrms')
+    expect(posts).toEqual([])
+    fireEvent.click(choice('50 Ω'))
+    await waitFor(() => expect(posts).toContain('/OSC/rigol-dho804/1/impedance/50'))
+    expect(screen.queryByText(/Press 50 Ω again/)).toBeNull()
+  })
+
+  it('goes back to 1 Mohm with one press', async () => {
+    show('50')
+    fireEvent.click(choice('1 MΩ'))
+    await waitFor(() => expect(posts).toContain('/OSC/rigol-dho804/1/impedance/1M'))
+  })
+
+  it('shows a 50 ohm input in the legend beside the scale', () => {
+    show('50')
+    expect(screen.getByText('50 mV/div DC 50 Ω')).toBeInTheDocument()
+  })
+})
+

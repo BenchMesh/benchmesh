@@ -1,0 +1,32 @@
+# RIGOL MHO900 over a raw socket. A user reported this vendor text on an MHO954, firmware 00.01.03.
+# Replies as the MHO900 Programming Guide shows them (printed pages), through the real engine
+# without hardware. Spec: ai_context/migration/coverage/README.md. The guide shows the preamble
+# only for BYTE: the format field is its legend's value for WORD (p477), the scale fields its example.
+definition: rigol_mho900
+transport: tcpip
+model: MHO954
+replies:
+  - {send: '\*IDN\?', reply: "NK TECHNOLOGIES,MHO954,MHO9B200012345,00.01.03", source: "*IDN? format p141; serial invented"}
+  - {send: ':CHANnel[1-4]:DISPlay\?', reply: "1", source: "p83"}
+  - {send: ':CHANnel[1-4]:SCALe\?', reply: "1.000000E-1", source: "p87"}
+  - {send: ':CHANnel[1-4]:OFFSet\?', reply: "1.000000E-2", source: "p84"}
+  - {send: ':CHANnel[1-4]:COUPling\?', reply: "AC", source: "p82"}
+  - {send: ':CHANnel[1-4]:IMPedance\?', reply: "FIFT", source: "p86"}
+  - {send: ':CHANnel[1-4]:PROBe\?', reply: "1.000000E+01", source: "p88: scientific notation"}
+  - {send: ':CHANnel[1-4]:BWLimit\?', reply: "250M", source: "p82"}
+  - {send: ':CHANnel[1-4]:INVert\?', reply: "1", source: "p84"}
+  - {send: ':TIMebase:MAIN:SCALe\?', reply: "2.000000E-6", source: "p323"}
+  - {send: ':TIMebase:MAIN:OFFSet\?', reply: "2.000000E-7", source: "p322"}
+  - {send: ':TRIGger:STATus\?', reply: "TD", source: "p332"}
+  - {send: ':TRIGger:SWEep\?', reply: "SING", source: "p332"}
+  - {send: ':TRIGger:EDGE:SOURce\?', reply: "CHAN2", source: "p335"}
+  - {send: ':TRIGger:EDGE:SLOPe\?', reply: "NEG", source: "p335"}
+  - {send: ':TRIGger:EDGE:LEVel\?', reply: "1.600000E-1", source: "p336"}
+  - {send: ':ACQuire:TYPE\?', reply: "HRES", source: "p19"}
+  - {send: ':ACQuire:SRATe\?', reply: "4.000000E+9", source: "p20"}
+  - {send: ':WAVeform:PREamble\?', reply: "1,0,3,1,1.000000E-8,-5.000000E-6,0.000000E-12,4.000000E-03,0,2048", source: "p477-478"}
+  - {send: ':WAVeform:DATA\?', reply: "#9000000006\x00\x08\x10\x08\x00\x0a\n", source: "p467: #9 header + 2 bytes per point; the last byte is a line feed, data and not a terminator"}
+  - {send: ':MEASure:ITEM\? (VPP|VAVG|VRMS|FREQuency),CHANnel[1-4]', reply: "8.888889E-3", source: "p211 (format)"}
+expect:
+  OSC:
+    1: {DISPLAY: "ON", SCALE: 0.1, OFFSET: 0.01, COUPLING: "AC", IMPEDANCE: "50", BWLIMIT: "250M", INVERT: "ON", PROBE: 10, TIMEBASE: 2.0e-6, TIMEOFFSET: 2.0e-7, TRIG_SWEEP: "SING", TRIG_SOURCE: "CHAN2", TRIG_SLOPE: "NEG", TRIG_LEVEL: 0.16, ACQ_TYPE: "HRES", SRATE: 4.0e9, TRIG_STATUS: "TD", WAVE: [2048, 2064, 2560], WAVE_Y0: 2048, WAVE_DY: 0.004, WAVE_X0: -5.0e-6, WAVE_DX: 1.0e-8, VRMS: 0.008888889}

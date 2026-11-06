@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Annunciators, MicroSwitch, ScopeScreen, ScopeTrace, Selector, Stepper, siNumber, siText, step125 } from '../../kit'
 import { OscProfile } from '../profiles'
 import { ChannelApi, channelStatus, useAction, useChannelApi } from '../api'
@@ -11,6 +11,8 @@ const RUN_TITLE: Record<string, string> = {
   RUN: 'Run / stop acquisition', SINGLE: 'Single shot: wait for one trigger', AUTO: 'Autoscale (changes all settings)', CLEAR: 'Clear the screen',
 }
 const MEAS_LABEL: Record<string, [string, string]> = { VPP: ['Vpp', 'V'], VAVG: ['Vavg', 'V'], VRMS: ['Vrms', 'V'], FREQ: ['Freq', 'Hz'] }
+const IMPEDANCE_LABEL: Record<string, string> = { '1M': '1 MΩ', '50': '50 Ω' }
+const ARM_MS = 3000
 const sourceLabel = (s: string) => (s.startsWith('CHAN') ? `CH${s.slice(4)}` : s)
 const chVar = (ch: string) => `var(--kit-ch${Math.min(4, Number(ch) || 1)})`
 
@@ -35,6 +37,18 @@ function OscChannel({ id, ch, status, profile, online }: {
   const probe = siNumber(status.PROBE) ?? 1
   const set = (op: string, v: string | number) => api.set(op, v)
   const sendTo = (op: string, v: number) => api.set(op, v).then(() => v)
+  // 50 ohm can damage an input that is fine at 1 Mohm: a second press within 3 s sends it
+  const [arming50, setArming50] = useState(false)
+  useEffect(() => {
+    if (!arming50) return
+    const t = setTimeout(() => setArming50(false), ARM_MS)
+    return () => clearTimeout(t)
+  }, [arming50])
+  const setImpedance = (v: string) => {
+    if (v === '50' && !arming50) { setArming50(true); return Promise.resolve(false) }
+    setArming50(false)
+    return run(set('impedance', v))
+  }
   return (
     <section className={`bench-osc__ch${on ? '' : ' bench-osc__ch--off'}`} aria-label={`Channel ${ch}`} style={{ '--ch': chVar(ch) } as React.CSSProperties}>
       <div className="bench-osc__ch-head">
@@ -55,6 +69,15 @@ function OscChannel({ id, ch, status, profile, online }: {
           {profile.couplings.length > 0 && (
             <Selector label={`CH${ch} coupling`} value={status.COUPLING ?? null} disabled={!online}
               options={profile.couplings.map((c) => ({ value: c, label: c }))} onChange={(v) => run(set('coupling', v))} />
+          )}
+          {profile.impedances.length > 0 && (
+            <Selector label={`CH${ch} input impedance`} value={status.IMPEDANCE ?? null} disabled={!online}
+              options={profile.impedances.map((z) => ({ value: z, label: IMPEDANCE_LABEL[z] ?? z, title: 'Input impedance' }))} onChange={setImpedance} />
+          )}
+          {arming50 && (
+            <span className="kit-error" role="alert">
+              Press 50 Ω again: {profile.impedance50Limit ? `this input takes at most ${profile.impedance50Limit}` : 'check the signal suits a 50 Ω input'}
+            </span>
           )}
           {profile.probes.length > 0 && (
             <Selector variant="chips" label={`CH${ch} probe`} value={profile.probes.find((p) => Number(p) === probe) ?? null} disabled={!online}
@@ -134,7 +157,7 @@ export function OscPanel({ id, channels, registry, profile, online }: {
           {shown.map((ch) => (
             <div key={ch} className="bench-osc__legend-ch" style={{ '--ch': chVar(ch) } as React.CSSProperties}>
               <b>CH{ch}</b>
-              <span>{siText(siNumber(st[ch].SCALE), 'V')}/div {st[ch].COUPLING ?? ''}</span>
+              <span>{siText(siNumber(st[ch].SCALE), 'V')}/div {st[ch].COUPLING ?? ''}{st[ch].IMPEDANCE === '50' ? ' 50 Ω' : ''}</span>
               {profile.measurements.map((m) => (
                 <Recordable key={m} inline field={m} unit={MEAS_LABEL[m]?.[1] ?? ''} channel={ch}><i>{MEAS_LABEL[m]?.[0] ?? m}</i>{siText(siNumber(st[ch][m]), MEAS_LABEL[m]?.[1] ?? '')}</Recordable>
               ))}

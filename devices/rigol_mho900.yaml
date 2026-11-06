@@ -1,0 +1,107 @@
+# RIGOL MHO900 series mixed signal oscilloscopes (MHO934, MHO954, MHO984): the analog scope.
+# Written from the programming guide, not yet tested here (models "awaiting confirmation"); what
+# users have seen on real MHO954s is in ai_context/migration/device-notes/rigol_mho900.md, with
+# what is left out (logic analyzer, deep records, generator) and why.
+# Base scpi_osc; differences: any vendor text in the identity, 12-bit traces (WORD), :AUToset,
+# edge sources without AC line, input impedance, probe ratios, 20M/250M limits, HRESolution.
+# Pages are the guide's printed pages.
+schema: benchmesh.device/v1
+id: rigol_mho900
+extends: scpi_osc
+vendor: RIGOL
+family: MHO900 series mixed signal oscilloscope
+version: 0.1.0
+sources:
+  - {doc: "MHO900 Programming Guide, 2026 (MHO900-ProgrammingGuide.pdf)", pages: "p1 models, p9-11 RUN/STOP/SINGle/CLEar, p12 AUToset, p19-20 ACQuire:TYPE/SRATe, p82-88 CHANnel, p141 *IDN?, p211 MEASure:ITEM, p322-323 TIMebase, p331-336 TRIGger, p467-478 WAVeform"}
+  - {doc: "MHO900 datasheet", pages: "bandwidth per model, 500 ps-500 s/div, 50 ohm input 5 Vrms"}
+  - {note: "USB product id not in the guide: vendor id only. Raw SCPI socket 5555 is not in the guide; two users reached it on real MHO954s."}
+  - {note: "A real MHO954 answered RIGOL TECHNOLOGIES on firmware 00.01.00 over USBTMC; a user reports NK TECHNOLOGIES on 00.01.03: the identity must not name the vendor."}
+models:
+  - {name: MHO934, match: "^[^,]+,MHO934,", features: {OSC: {bandwidth_hz: 350e6}}}
+  - {name: MHO954, match: "^[^,]+,MHO954,", features: {OSC: {bandwidth_hz: 500e6}}}
+  - {name: MHO984, match: "^[^,]+,MHO984,", features: {OSC: {bandwidth_hz: 800e6}}}
+identify: idn
+link:
+  usbtmc: {vid: "1ab1"}
+  tcp: {port: 5555}
+session:
+  # another program may leave a deep read window set, which the screen trace (1 to 1000) cannot use
+  on_connect: [wav_mode, wav_form, wav_start, wav_stop]
+commands:
+  disp_q: {source: "CHANnel<n>:DISPlay p83"}
+  scale_q: {source: "CHANnel<n>:SCALe p87"}
+  offset_q: {source: "CHANnel<n>:OFFSet p84"}
+  coup_q: {source: "CHANnel<n>:COUPling p82; AC, DC or GND"}
+  bwl_q: {source: "CHANnel<n>:BWLimit p82; 20M, 250M or OFF"}
+  bwl_set:
+    params: {b: {values: {"250M": "250M"}}}
+    source: "CHANnel<n>:BWLimit p82"
+  probe_q: {source: "CHANnel<n>:PROBe p88; scientific notation"}
+  probe_set:
+    params: {r: {values: {"0.001": "0.001", "0.002": "0.002", "0.005": "0.005", "0.01": "0.01", "0.02": "0.02", "0.05": "0.05", "0.2": "0.2", "0.5": "0.5", "2": "2", "5": "5", "15": "15", "20": "20", "50": "50", "150": "150", "200": "200", "500": "500", "1500": "1500", "2000": "2000", "5000": "5000", "10000": "10000", "15000": "15000", "20000": "20000", "50000": "50000"}}}
+    source: "CHANnel<n>:PROBe p88"
+  scale_set:
+    params: {v: {min: 2e-7, max: 5e5}}
+    description: "1 Mohm input at 1X: 1 mV/div-10 V/div; 50 ohm: 200 uV/div-1 V/div (p87); multiplied by the probe ratio; the scope clamps"
+  imp_q:
+    send: ":CHANnel{ch}:IMPedance?"
+    parse: [trim, {map: {"OMEG": "1M", "FIFT": "50", "FIFTy": "50"}}]
+    source: "CHANnel<n>:IMPedance p86; OMEG or FIFT"
+  imp_set:
+    send: ":CHANnel{ch}:IMPedance {z}"
+    params: {z: {type: enum, values: {"1M": "OMEG", "50": "FIFTy"}}}
+    reply: none
+    safety: configure
+    source: "CHANnel<n>:IMPedance p86"
+    description: "The 50 ohm input takes at most 5 Vrms (datasheet); the panel asks a second press"
+  tb_q: {source: "TIMebase[:MAIN]:SCALe p323"}
+  tb_set:
+    params: {v: {min: 5e-10, max: 500}}
+    source: "TIMebase[:MAIN]:SCALe p323; 500 ps-500 s/div (datasheet)"
+  tbofs_q: {source: "TIMebase[:MAIN][:OFFSet] p322"}
+  trig_stat_q: {source: "TRIGger:STATus? p332; TD, WAIT, RUN, AUTO or STOP"}
+  sweep_q: {source: "TRIGger:SWEep p332; AUTO, NORM or SING"}
+  tsrc_q: {source: "TRIGger:EDGE:SOURce p335; CHAN1..CHAN4 or D0..D15"}
+  tsrc_set:
+    params: {s: {values: {"AC": null}}}
+    source: "TRIGger:EDGE:SOURce p335; no AC line. D0..D15 need the logic probe (left out, see the notes)"
+  slope_q: {source: "TRIGger:EDGE:SLOPe p335; POS, NEG or RFAL"}
+  tlev_q: {source: "TRIGger:EDGE:LEVel p336"}
+  acq_q: {source: "ACQuire:TYPE p19; NORM, PEAK, AVER or HRES"}
+  acq_set:
+    params: {t: {values: {"HRES": "HRESolution"}}}
+    source: "ACQuire:TYPE p19"
+  srate_q: {source: "ACQuire:SRATe? p20"}
+  run_set:
+    params: {a: {values: {"AUTO": ":AUToset"}}}
+    source: ":RUN :STOP :SINGle :CLEar p9-11, :AUToset p12 (:SYSTem:AUToscale only switches the Auto menu, p297)"
+  wav_mode: {source: "WAVeform:MODE p469; NORMal is the screen, 1000 points"}
+  wav_form:
+    send: ":WAVeform:FORMat WORD"
+    source: "WAVeform:FORMat p469-470; BYTE would keep 8 of the 12 bits"
+  wav_start: {send: ":WAVeform:STARt 1", reply: none, safety: configure, source: "WAVeform:STARt p475"}
+  wav_stop: {send: ":WAVeform:STOP 1000", reply: none, safety: configure, source: "WAVeform:STOP p476"}
+  wav_pre: {source: "WAVeform:PREamble? p477-478"}
+  wav_data:
+    parse: [{samples: u16le}]
+    source: "WAVeform:DATA? p471; low byte first, as a project reading a real MHO954 decodes it"
+  vpp_q: {source: "MEASure:ITEM? p211"}
+classes:
+  OSC:
+    features:
+      bandwidth_hz: 500e6
+      scale: {min: 200e-6, max: 10, note: "V/div at probe 1X: 1 mV-10 V at 1 Mohm, 200 uV-1 V at 50 ohm; multiplied by the probe ratio"}
+      timebase: {min: 500e-12, max: 500}
+      probe: ["0.001", "0.002", "0.005", "0.01", "0.02", "0.05", "0.1", "0.2", "0.5", "1", "2", "5", "10", "15", "20", "50", "100", "150", "200", "500", "1000", "1500", "2000", "5000", "10000", "15000", "20000", "50000"]
+      impedance_50_limit: "5 Vrms"
+    poll:
+      - every_ms: 250
+        read: [trig_stat_q, wav_pre, wav_data]
+      - every_ms: 1000
+        read: [disp_q, vpp_q, vavg_q, vrms_q, freq_q]
+      - every_ms: 3000
+        read: [scale_q, offset_q, coup_q, imp_q, probe_q, bwl_q, inv_q, tb_q, tbofs_q, sweep_q, tsrc_q, slope_q, tlev_q, acq_q, srate_q]
+    status:
+      IMPEDANCE: imp_q
+    operations:
+      impedance: {get: imp_q, set: imp_set}

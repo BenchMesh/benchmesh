@@ -31,6 +31,9 @@ families:
     - {kind: unverified, text: "USB product id not documented: vendor id only."}
   rigol_dho1000:
     - {kind: unverified, text: "USB product id not documented: vendor id only."}
+  rigol_mho900:
+    - {kind: unverified, text: "USB product id not documented: vendor id only."}
+    - {kind: unsupported, text: "The analog scope only: logic analyzer channels, serial decode, deep records and the generator option are not supported yet."}
   keysight_infiniivision:
     - {kind: partial_interface, text: "1000 X: EDUX1002A / DSOX1102A have no LAN. 2000 X: LAN only with the LAN/VGA module. 1200 X: unconfirmed. 3000T: community only."}
     - {kind: unverified, text: "USB vendor 2a8d only; Agilent-era units use 0957; product ids differ per model."}

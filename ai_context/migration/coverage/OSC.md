@@ -32,6 +32,7 @@ implemented since 2026-10-18; every scope definition with a LAN socket offers it
 | 10 | GW Instek GDS-1000B (GDS-1054B/1072B/1102B) | €350-700 | GW SCPI over **USB CDC-ACM (virtual COM)** | `#<n><len>` block, i16be, text settings header | good | medium | works today (serial link) |
 | 11 | OWON XDS2000/3000, TAO3000, SDS(-E), HDS200 handheld | €150-600 | OWON SCPI (USB vendor bulk / LAN) | **4-byte length prefix** + i16le, JSON header | poor | low | **blocked**: non-IEEE length prefix, string values with units, unknown transport |
 | 12 | Hantek DSO2000 (DSO2C10/2C15/2D10/2D15) | €150-250 | Hantek SCPI subset (USBTMC) | custom `#9…` multi-packet frame, all channels | poor | low | **blocked**: custom framing, no RUN/STOP or measurement commands |
+| 5b | Rigol MHO900 (MHO934/954/984) | €1000-2000 | SCPI (DHO dialect) | IEEE block, BYTE/WORD | very good | high | works (`rigol_mho900.yaml`, analog) |
 | - | Hantek 6022BE/BL | €60 | raw USB (Cypress FX2, needs firmware upload) | - | none (sigrok) | - | not SCPI; out of scope |
 | - | Micsig TO/STO/ATO tablet scopes | €400-1500 | not verified (no manual obtained) | - | none found | - | unknown |
 | - | FNIRSI (1013D, DPOX180H, 2C23T, DSO152) | €50-150 | no remote control interface (USB = mass storage / charging) | - | - | - | none |
@@ -483,6 +484,19 @@ the doc). No LAN.
 repeated calls return `#9<len><total><uploaded>` + interleaved data until `uploaded == total`.
 **Confidence:** low. **DSL fit:** blocked - multi-packet stateful read with a custom header (looks like
 IEEE but the 9-digit length is followed by more ASCII fields). Settings/trigger subset would work today.
+
+### 2.13 Rigol MHO900 (MHO934, MHO954, MHO984)
+
+**Doc:** MHO900 Programming Guide, 2026 (518 PDF pages; pages here are printed). **Definition:**
+`rigol_mho900`, analog scope only; details and open questions in `device-notes/rigol_mho900.md`.
+**Models:** 350 / 500 / 800 MHz, 4 ch, 4 GSa/s, 12-bit, 100 Mpts (500 Mpts option), 16 digital channels
+with the optional PLA2216 probe. **Interfaces:** USBTMC vid `1ab1` (**pid not found**), LAN raw socket 5555
+(not in the guide, reached by users). **Identify:** `RIGOL TECHNOLOGIES,MHO954,...` seen on 00.01.00,
+`NK TECHNOLOGIES,MHO954,...` reported on 00.01.03, so the regex names no vendor.
+**Same as the base `scpi_osc` except:** `:AUToset` (p12), edge sources CH1-4 and D0-D15 without AC line (p335),
+`:CHANnel{ch}:IMPedance OMEG|FIFTy` (p86), BW 20M/250M (p82), HRESolution (p19), WORD traces, read window reset on connect.
+**Confidence:** high for the analog scope (one identify seen live, no waveform seen by us). **DSL fit:** works today.
+**Not modelled:** `:WAVeform:SOURce` lists no digital channel (p468), unlike the MSO5000 guide.
 
 ### 2.12 Not supported / no remote interface
 

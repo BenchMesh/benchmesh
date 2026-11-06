@@ -233,6 +233,9 @@ export function oscProfile(features: any, setters: Setters, channels: number) {
     scale: range(features?.scale, 1e-3, 10),
     timebase: range(features?.timebase, 1e-9, 100),
     couplings: ordered(setters, 'coupling', ['DC', 'AC', 'GND']),
+    impedances: ordered(setters, 'impedance', ['1M', '50']),
+    /** What the 50 ohm input takes, shown before switching to it. */
+    impedance50Limit: typeof features?.impedance_50_limit === 'string' ? (features.impedance_50_limit as string) : null,
     probes: [...(setters.probe?.value?.values ?? [])].sort((a, b) => Number(a) - Number(b)),
     triggerSources: sources,
     slopes: ordered(setters, 'trigger_slope', ['POS', 'NEG', 'RFAL']),

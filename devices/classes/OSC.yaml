@@ -6,12 +6,14 @@ description: >
   trigger and acquisition settings (repeated in every channel block). The screen trace is
   raw sample codes with a linear scale: volts = (code - WAVE_Y0) * WAVE_DY,
   time = WAVE_X0 + i * WAVE_DX. Features describe the model: divisions, bandwidth_hz,
-  scale/timebase ranges, probe ratios, measurement items, channel_colors.
+  scale/timebase ranges, probe ratios, measurement items, channel_colors,
+  impedance_50_limit.
 status:
   DISPLAY:     {type: enum, values: [ON, OFF], required: true, description: "Channel shown on screen"}
   SCALE:       {type: si, required: true, description: "Vertical scale (V/div)"}
   OFFSET:      {type: si, required: true, description: "Vertical offset (V)"}
   COUPLING:    {type: string, required: true, description: "AC, DC or GND"}
+  IMPEDANCE:   {type: enum, values: ["1M", "50"], description: "Input impedance, on scopes with a 50 ohm input"}
   PROBE:       {type: number, description: "Probe attenuation ratio"}
   BWLIMIT:     {type: string, description: "Bandwidth limit (e.g. 20M) or OFF"}
   INVERT:      {type: enum, values: [ON, OFF]}
@@ -38,6 +40,7 @@ operations:
   scale:           {get: true, set: true, value: si, required: [get, set], description: "Vertical scale (V/div)"}
   offset:          {get: true, set: true, value: si, description: "Vertical offset (V)"}
   coupling:        {get: true, set: true, value: string, description: "AC, DC or GND"}
+  impedance:       {get: true, set: true, value: enum, values: ["1M", "50"], description: "Input impedance; features.impedance_50_limit names what the 50 ohm input takes"}
   probe:           {get: true, set: true, value: string, description: "Probe ratio"}
   bwlimit:         {get: true, set: true, value: string, description: "Bandwidth limit"}
   invert:          {get: true, set: true, value: enum, values: [ON, OFF]}

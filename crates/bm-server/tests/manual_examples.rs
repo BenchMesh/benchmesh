@@ -251,3 +251,83 @@ fn awaiting_definitions_have_manual_examples() {
         .collect();
     assert!(missing.is_empty(), "definitions without devices/examples/<id>.yaml: {missing:?}");
 }
+
+/// The MHO900 definition on the wire: what the guide wants, not what its base sends.
+mod mho900 {
+    use super::*;
+    use std::sync::Mutex;
+
+    type Sent = Arc<Mutex<Vec<String>>>;
+
+    fn open(idn: &'static str) -> (Result<Engine, Error>, Sent, Arc<DeviceDef>) {
+        let cat = load_catalog(&repo().join("devices")).unwrap();
+        let (_, def) = cat.devices.get("rigol_mho900").expect("definition rigol_mho900");
+        let def = Arc::new(def.for_transport(Some("usbtmc")).unwrap());
+        let sent = Arc::new(Mutex::new(Vec::new()));
+        let log = sent.clone();
+        let sim = SimTransport::new(Box::new(move |w: &[u8]| {
+            let text = String::from_utf8_lossy(w).trim().to_string();
+            let reply = (text == "*IDN?").then(|| idn.as_bytes().to_vec());
+            log.lock().unwrap().push(text);
+            reply
+        }));
+        (Engine::open(def.clone(), Box::new(sim)), sent, def)
+    }
+
+    #[test]
+    fn identifies_every_model_whatever_the_vendor_text() {
+        for (idn, model) in [
+            ("RIGOL TECHNOLOGIES,MHO934,X,00.01.00", "MHO934"),
+            ("RIGOL TECHNOLOGIES,MHO954,X,00.01.00", "MHO954"),
+            ("NK TECHNOLOGIES,MHO954,X,00.01.03", "MHO954"),
+            ("RIGOL TECHNOLOGIES,MHO984,X,00.01.00", "MHO984"),
+        ] {
+            assert_eq!(open(idn).0.unwrap_or_else(|e| panic!("{idn}: {e}")).model.name, model);
+        }
+        assert!(matches!(open("RIGOL TECHNOLOGIES,DHO804,X,00.01.03").0, Err(Error::UnknownModel(_))));
+    }
+
+    #[test]
+    fn connecting_selects_the_screen_trace_in_12_bits_whatever_window_was_left_set() {
+        let (e, sent, _) = open("RIGOL TECHNOLOGIES,MHO954,X,00.01.00");
+        let mut e = e.unwrap();
+        sent.lock().unwrap().clear();
+        e.start_session().unwrap();
+        assert_eq!(*sent.lock().unwrap(), [":WAVeform:MODE NORMal", ":WAVeform:FORMat WORD", ":WAVeform:STARt 1", ":WAVeform:STOP 1000"]);
+    }
+
+    #[test]
+    fn setters_send_what_the_guide_documents() {
+        let (e, sent, _) = open("RIGOL TECHNOLOGIES,MHO954,X,00.01.00");
+        let mut e = e.unwrap();
+        for (op, v, wire) in [
+            ("run", "AUTO", ":AUToset"),
+            ("impedance", "50", ":CHANnel2:IMPedance FIFTy"),
+            ("impedance", "1M", ":CHANnel2:IMPedance OMEG"),
+            ("acquire_type", "HRES", ":ACQuire:TYPE HRESolution"),
+            ("bwlimit", "250M", ":CHANnel2:BWLimit 250M"),
+            ("probe", "15", ":CHANnel2:PROBe 15"),
+            ("timebase", "5e-10", ":TIMebase:MAIN:SCALe 5e-10"),
+            // 200 uV/div through a 0.001 probe: the guide's smallest scale at its smallest ratio
+            ("scale", "2e-7", ":CHANnel2:SCALe 2e-07"),
+        ] {
+            sent.lock().unwrap().clear();
+            e.set("OSC", op, 2, v).unwrap_or_else(|err| panic!("{op} {v}: {err}"));
+            assert_eq!(sent.lock().unwrap().last().map(String::as_str), Some(wire), "{op} {v}");
+        }
+    }
+
+    #[test]
+    fn offers_only_the_trigger_sources_it_has_without_a_logic_probe() {
+        let (_, _, def) = open("RIGOL TECHNOLOGIES,MHO954,X,00.01.00");
+        let (spec, _) = bm_server::opspec::setter(&def, &def.classes["OSC"].operations["trigger_source"]).unwrap();
+        assert_eq!(spec.unwrap()["values"], serde_json::json!(["CHAN1", "CHAN2", "CHAN3", "CHAN4"]));
+    }
+
+    #[test]
+    fn impedance_does_not_count_as_energizing_for_flows() {
+        let (_, _, def) = open("RIGOL TECHNOLOGIES,MHO954,X,00.01.00");
+        let (_, energizes) = bm_server::opspec::setter(&def, &def.classes["OSC"].operations["impedance"]).unwrap();
+        assert!(!energizes);
+    }
+}

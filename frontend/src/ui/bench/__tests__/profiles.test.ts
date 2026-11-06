@@ -144,6 +144,11 @@ describe('OSC profile', () => {
     const [features, setters] = fx('rigol-dho804:OSC')
     expect(oscProfile(features, setters, 2).triggerSources).toEqual(['CHAN1', 'CHAN2', 'AC'])
   })
+  it('input impedance comes from the setter, its 50 ohm limit from the features', () => {
+    const setters = setterMap([{ name: 'impedance', http_method: 'POST', value: { type: 'enum', values: ['50', '1M'] } }])
+    expect(oscProfile({ impedance_50_limit: '5 Vrms' }, setters, 1)).toMatchObject({ impedances: ['1M', '50'], impedance50Limit: '5 Vrms' })
+    expect(oscProfile({}, {}, 1)).toMatchObject({ impedances: [], impedance50Limit: null })
+  })
   it('works without optional features', () => {
     const p = oscProfile({}, {}, 1)
     expect(p).toMatchObject({ hdivs: 10, vdivs: 8, couplings: [], triggerSources: [], measurements: [] })
