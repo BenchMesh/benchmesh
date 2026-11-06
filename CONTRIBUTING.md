@@ -4,7 +4,7 @@ Thank you for your interest in BenchMesh. Bug reports, instrument definitions an
 
 ## Reporting a bug
 
-1. Check the [issue tracker](https://github.com/BenchMesh/benchmesh-app/issues) for an existing report and make sure you run the latest release.
+1. Check the [issue tracker](https://github.com/BenchMesh/benchmesh/issues) for an existing report and make sure you run the latest release.
 2. Open the instrument's **console** (console icon in the panel header), reproduce the problem and press **Copy**: it gives the instrument, model, identify reply, connection and app version together with what was sent and received. Paste that into the issue.
 3. Describe what you did, what you expected and what happened, and name your operating system.
 
@@ -28,7 +28,7 @@ You need Rust (stable), Node.js 20 and, for the desktop app, the
 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system.
 
 ```bash
-git clone https://github.com/BenchMesh/benchmesh-app.git && cd benchmesh-app
+git clone https://github.com/BenchMesh/benchmesh.git && cd benchmesh
 (cd frontend && npm ci && npm run build)
 cargo run -p bm-server -- --config captures/bench-config.yaml --simulate captures/20261016-203514
 # UI on http://localhost:57666/ui with a simulated bench, no hardware needed

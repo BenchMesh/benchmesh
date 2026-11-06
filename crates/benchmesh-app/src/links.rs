@@ -1,10 +1,10 @@
 //! Web pages the UI opens in the system browser (the webview does not follow external links).
 //! A fixed list: the UI is served over HTTP, so it names a page and never passes a URL.
 
-pub const RELEASES: &str = "https://github.com/BenchMesh/benchmesh-app/releases/latest";
+pub const RELEASES: &str = "https://github.com/BenchMesh/benchmesh/releases/latest";
 const PAGES: [(&str, &str); 12] = [
-    ("issues", "https://github.com/BenchMesh/benchmesh-app/issues"),
-    ("new-issue", "https://github.com/BenchMesh/benchmesh-app/issues/new"),
+    ("issues", "https://github.com/BenchMesh/benchmesh/issues"),
+    ("new-issue", "https://github.com/BenchMesh/benchmesh/issues/new"),
     ("releases", RELEASES),
     ("docs", "https://benchmesh.online/docs"),
     ("docs-scpi", "https://benchmesh.online/docs/scpi"),
@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn only_known_pages_open() {
-        assert_eq!(url_of("new-issue"), Some("https://github.com/BenchMesh/benchmesh-app/issues/new"));
+        assert_eq!(url_of("new-issue"), Some("https://github.com/BenchMesh/benchmesh/issues/new"));
         assert!(url_of("issues").unwrap().ends_with("/issues"));
         assert_eq!(url_of("docs"), Some("https://benchmesh.online/docs"));
         assert_eq!(url_of("docs-scpi"), Some("https://benchmesh.online/docs/scpi"));
