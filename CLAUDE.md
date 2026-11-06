@@ -14,7 +14,7 @@ BenchMesh is one cockpit for lab instruments: power supplies, multimeters, elect
 signal generators, oscilloscopes, LCR meters and spectrum analyzers, connected over USB, serial or
 LAN, controlled from one window, recorded on one shared timeline and automated with flows. It is
 a **Rust** server with a **React** UI, shipped as a **Tauri** desktop app for Windows, macOS and
-Linux. Working branch: `develop`. Repository: `BenchMesh/benchmesh-app` (public, MIT; remote `origin`; the
+Linux. Working branch: `develop`. Repository: `BenchMesh/benchmesh` (public, MIT; remote `origin`; the
 former `MarkoVcode/BenchMesh` is remote `legacy`). Public site: https://benchmesh.online (repo `../BenchMeshOnline`).
 
 Instruments are described by **declarative device definitions** (`devices/*.yaml`, shared parts
@@ -327,7 +327,7 @@ npm run test:e2e       # Playwright against a preview build with a mocked API (C
 validation, transport on Windows; macOS off for now), `e2e-tests.yml`. Releases are built without Mac for now (services `release.yml` input `macos`, default off). Releases: bump the version (`Cargo.toml`,
 `crates/benchmesh-app/tauri.conf.json`) and refresh the community status snapshot (`scripts/community-status.sh`)
 on `develop`, tag `vX.Y.Z`, push; then the release workflow of
-`BenchMesh/services` builds the draft release here; publish with `gh release edit vX.Y.Z --draft=false -R BenchMesh/benchmesh-app`.
+`BenchMesh/services` builds the draft release here; publish with `gh release edit vX.Y.Z --draft=false -R BenchMesh/benchmesh`.
 The instrument fixer (benchmesh-services `docs/FIXER.md`, "Developing beside the fixer") releases hotfixes from
 `release/X.Y` at the same time: release from `develop` only while it has no release open and take the next free
 version; afterwards move both release lines to the release and run the fixer's `setup`; never commit to a release

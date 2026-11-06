@@ -83,7 +83,7 @@ describe('About and feedback', () => {
   it('links to the GitHub issues', async () => {
     answer(COMMUNITY)
     render(<AboutView />)
-    expect(screen.getByRole('link', { name: 'Report an app issue' })).toHaveAttribute('href', 'https://github.com/BenchMesh/benchmesh-app/issues/new')
+    expect(screen.getByRole('link', { name: 'Report an app issue' })).toHaveAttribute('href', 'https://github.com/BenchMesh/benchmesh/issues/new')
     expect(screen.getByRole('link', { name: 'See open issues' })).toHaveAttribute('href', PAGE_URLS.issues)
     expect(screen.getByText(PAGE_URLS.issues)).toBeInTheDocument()
   })

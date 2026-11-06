@@ -1,6 +1,6 @@
 # Open source and the official distribution
 
-BenchMesh is open source (MIT): this repository, `BenchMesh/benchmesh-app`, is the whole
+BenchMesh is open source (MIT): this repository, `BenchMesh/benchmesh`, is the whole
 application, and anyone can build, run, change and redistribute it. The **official
 distribution** - the installers on benchmesh.online and in this repository's Releases - is
 built by the BenchMesh project from this repository plus a private repository,

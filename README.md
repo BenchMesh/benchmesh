@@ -1,10 +1,10 @@
 <div align="center">
 
-![BenchMesh: power supply, multimeter, oscilloscope and electronic load on one bench](https://raw.githubusercontent.com/BenchMesh/benchmesh-app/develop/docs/static/bench.png)
+![BenchMesh: power supply, multimeter, oscilloscope and electronic load on one bench](https://raw.githubusercontent.com/BenchMesh/benchmesh/develop/docs/static/bench.png)
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/BenchMesh/benchmesh-app/develop/docs/static/logo/benchmesh-mark-on-dark.svg">
-  <img alt="BenchMesh logo" src="https://raw.githubusercontent.com/BenchMesh/benchmesh-app/develop/docs/static/logo/benchmesh-mark-on-light.svg" width="72">
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/BenchMesh/benchmesh/develop/docs/static/logo/benchmesh-mark-on-dark.svg">
+  <img alt="BenchMesh logo" src="https://raw.githubusercontent.com/BenchMesh/benchmesh/develop/docs/static/logo/benchmesh-mark-on-light.svg" width="72">
 </picture>
 
 # BenchMesh
@@ -17,10 +17,10 @@ one shared timeline.
 
 ### [benchmesh.online](https://benchmesh.online)
 
-[Download](https://benchmesh.online/download) · [Supported instruments](https://benchmesh.online/instruments) · [Docs](https://benchmesh.online/docs) · [Releases](https://github.com/BenchMesh/benchmesh-app/releases)
+[Download](https://benchmesh.online/download) · [Supported instruments](https://benchmesh.online/instruments) · [Docs](https://benchmesh.online/docs) · [Releases](https://github.com/BenchMesh/benchmesh/releases)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/BenchMesh/benchmesh-app/blob/develop/LICENSE)
-[![Latest release](https://img.shields.io/github/v/release/BenchMesh/benchmesh-app)](https://github.com/BenchMesh/benchmesh-app/releases/latest)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/BenchMesh/benchmesh/blob/develop/LICENSE)
+[![Latest release](https://img.shields.io/github/v/release/BenchMesh/benchmesh)](https://github.com/BenchMesh/benchmesh/releases/latest)
 
 </div>
 
@@ -44,13 +44,13 @@ Download the installer for your system from **[benchmesh.online/download](https:
 
 ## Build from source
 
-The current code is on the [`develop`](https://github.com/BenchMesh/benchmesh-app/tree/develop) branch (Rust + Tauri, React UI).
+The current code is on the [`develop`](https://github.com/BenchMesh/benchmesh/tree/develop) branch (Rust + Tauri, React UI).
 You need Rust (stable, via [rustup](https://rustup.rs)), Node.js 20 or newer and, for the desktop app,
 the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your system (on Linux the
 WebKitGTK and GTK development packages).
 
 ```bash
-git clone https://github.com/BenchMesh/benchmesh-app.git && cd benchmesh-app
+git clone https://github.com/BenchMesh/benchmesh.git && cd benchmesh
 cd frontend && npm ci && npm run build && cd -
 cargo run -p bm-server        # API + UI on http://localhost:57666/ui
 ```
@@ -65,7 +65,7 @@ cargo tauri build             # installers for your system in target/release/bun
 ```
 
 Contributor notes are in
-[CLAUDE.md](https://github.com/BenchMesh/benchmesh-app/blob/develop/CLAUDE.md) and [CONTRIBUTING.md](https://github.com/BenchMesh/benchmesh-app/blob/develop/CONTRIBUTING.md).
+[CLAUDE.md](https://github.com/BenchMesh/benchmesh/blob/develop/CLAUDE.md) and [CONTRIBUTING.md](https://github.com/BenchMesh/benchmesh/blob/develop/CONTRIBUTING.md).
 
 ## Open source and the official build
 
@@ -73,8 +73,8 @@ Everything BenchMesh does is in this repository, under the MIT license. The inst
 benchmesh.online are the **official build**: this code plus a few things that only the BenchMesh
 project ships - automatic updates (signed) and, later, the BenchMesh online services. A build you
 make yourself is a **community build**: the same application, without them. Details:
-[ai_context/OPEN_CORE.md](https://github.com/BenchMesh/benchmesh-app/blob/develop/ai_context/OPEN_CORE.md).
+[ai_context/OPEN_CORE.md](https://github.com/BenchMesh/benchmesh/blob/develop/ai_context/OPEN_CORE.md).
 
 ## License
 
-[MIT](https://github.com/BenchMesh/benchmesh-app/blob/develop/LICENSE)
+[MIT](https://github.com/BenchMesh/benchmesh/blob/develop/LICENSE)
