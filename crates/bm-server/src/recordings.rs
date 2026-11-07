@@ -153,7 +153,7 @@ impl Recordings {
 
     /// Gives every running or paused recording (or only `only`) a series for each of these
     /// readings it lacks - ending its series of the same sensor (channel) and quantity when the
-    /// field, label or unit changed (°C to °F, relative humidity to dew point, another chip at
+    /// field, label or unit changed (°C to °F, relative to absolute humidity, another chip at
     /// the address) - and announces the recordings changed.
     async fn add_environment(&self, env: &[environment::Reading], only: Option<i64>) {
         if env.is_empty() {

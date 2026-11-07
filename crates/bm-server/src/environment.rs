@@ -73,11 +73,12 @@ pub trait Environment: Send + Sync {
     fn snapshot(&self) -> Option<Snapshot>;
 }
 
-/// What a field measures: relative humidity, dew point and absolute humidity are one quantity
-/// given in different ways (a recording has one series of it at a time).
+/// What a field measures: relative and absolute humidity are one quantity given in different
+/// ways (a recording has one series of it at a time); the dew point is a reading of its own, next
+/// to either.
 pub fn quantity(field: &str) -> &str {
     match field {
-        "HUM" | "DEW" | "AH" => "HUM",
+        "HUM" | "AH" => "HUM",
         f => f,
     }
 }
@@ -162,6 +163,6 @@ mod tests {
     #[test]
     fn labels_name_the_reading() {
         assert_eq!(label(&r("DEW", "Dew point", "°C", 9.0, 0)), "Environment · Dew point");
-        assert_eq!((quantity("DEW"), quantity("AH"), quantity("HUM"), quantity("PRES")), ("HUM", "HUM", "HUM", "PRES"));
+        assert_eq!((quantity("DEW"), quantity("AH"), quantity("HUM"), quantity("PRES")), ("DEW", "HUM", "HUM", "PRES"));
     }
 }

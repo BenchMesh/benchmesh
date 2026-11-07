@@ -1147,9 +1147,10 @@ async fn an_instrument_in_use_by_the_running_flow_cannot_be_parked() {
 
 /// A sensor whose readings the test sets (`None`: not attached): a BME280-like chip at 0x76
 /// (temperature, pressure, humidity when given), its temperature unit (`None`: °C), humidity as
-/// the dew point, and a second temperature sensor at 0x48 (`Some`: attached).
+/// absolute humidity, a second temperature sensor at 0x48 (`Some`: attached), and the dew point
+/// next to the humidity (`Some`: shown).
 #[derive(Default)]
-struct FakeSensor(Mutex<Option<(f64, Option<f64>)>>, Mutex<Option<&'static str>>, Mutex<bool>, Mutex<Option<f64>>);
+struct FakeSensor(Mutex<Option<(f64, Option<f64>)>>, Mutex<Option<&'static str>>, Mutex<bool>, Mutex<Option<f64>>, Mutex<Option<f64>>);
 
 impl bm_server::environment::Environment for FakeSensor {
     fn snapshot(&self) -> Option<bm_server::environment::Snapshot> {
@@ -1161,10 +1162,13 @@ impl bm_server::environment::Environment for FakeSensor {
         let mut readings = vec![r("TEMP", 0x76, "Temperature (BME280 0x76)", unit, t), r("PRES", 0x76, "Pressure (BME280 0x76)", "hPa", 1013.2)];
         if let Some(h) = h {
             readings.push(if *self.2.lock().unwrap() {
-                r("DEW", 0x76, "Dew point (BME280 0x76)", unit, h)
+                r("AH", 0x76, "Absolute humidity (BME280 0x76)", "g/m³", h)
             } else {
                 r("HUM", 0x76, "Humidity (BME280 0x76)", "%RH", h)
             });
+        }
+        if let Some(d) = *self.4.lock().unwrap() {
+            readings.push(r("DEW", 0x76, "Dew point (BME280 0x76)", unit, d));
         }
         if let Some(t2) = *self.3.lock().unwrap() {
             readings.push(r("TEMP", 0x48, "Temperature (TMP117 0x48)", unit, t2));
@@ -1334,14 +1338,14 @@ async fn two_temperature_sensors_get_a_column_each() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn humidity_as_dew_point_replaces_the_relative_humidity_series() {
+async fn absolute_humidity_replaces_the_relative_humidity_series() {
     let sensor = Arc::new(FakeSensor::default());
     *sensor.0.lock().unwrap() = Some((23.5, Some(45.0)));
-    let f = sensor_fixture("env-dew", sensor.clone());
-    let (_, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "dew", "interval_s": 1})), None).await;
+    let f = sensor_fixture("env-abs", sensor.clone());
+    let (_, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "abs", "interval_s": 1})), None).await;
     let id = r["id"].as_i64().unwrap();
     let hum = |r: &Value| -> Vec<(String, bool)> {
-        r["series"].as_array().unwrap().iter().filter(|s| s["field"] == "HUM" || s["field"] == "DEW")
+        r["series"].as_array().unwrap().iter().filter(|s| s["field"] == "HUM" || s["field"] == "AH")
             .map(|s| (s["field"].as_str().unwrap().to_string(), s["removed_at"].is_null())).collect()
     };
     assert_eq!(hum(&r), [("HUM".to_string(), true)]);
@@ -1351,10 +1355,39 @@ async fn humidity_as_dew_point_replaces_the_relative_humidity_series() {
     loop {
         let r = recording_of(&f, id).await;
         if hum(&r).len() == 2 {
-            assert_eq!(hum(&r), [("HUM".to_string(), false), ("DEW".to_string(), true)]);
+            assert_eq!(hum(&r), [("HUM".to_string(), false), ("AH".to_string(), true)]);
             break;
         }
-        assert!(Instant::now() < deadline, "no dew point series: {r}");
+        assert!(Instant::now() < deadline, "no absolute humidity series: {r}");
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_dew_point_is_recorded_next_to_the_humidity_and_ends_nothing() {
+    let sensor = Arc::new(FakeSensor::default());
+    *sensor.0.lock().unwrap() = Some((23.5, Some(45.0)));
+    let f = sensor_fixture("env-dew", sensor.clone());
+    let (_, r, _) = call(&f, "POST", "/recordings", Some(json!({"name": "dew", "interval_s": 1})), None).await;
+    let id = r["id"].as_i64().unwrap();
+    let series = |r: &Value, field: &str| -> (usize, usize) {
+        let all: Vec<&Value> = r["series"].as_array().unwrap().iter().filter(|s| s["field"] == field).collect();
+        (all.len(), all.iter().filter(|s| s["removed_at"].is_null()).count())
+    };
+    assert_eq!(series(&r, "DEW"), (0, 0));
+    *sensor.4.lock().unwrap() = Some(10.9);
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while series(&recording_of(&f, id).await, "DEW") != (1, 1) {
+        assert!(Instant::now() < deadline, "no dew point series");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    }
+    // several ticks with both reported: each keeps its one series
+    tokio::time::sleep(Duration::from_millis(2500)).await;
+    let r = recording_of(&f, id).await;
+    assert_eq!((series(&r, "HUM"), series(&r, "DEW")), ((1, 1), (1, 1)), "{r}");
+    // no longer shown: the series stays, with a gap
+    *sensor.4.lock().unwrap() = None;
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    let r = recording_of(&f, id).await;
+    assert_eq!((series(&r, "HUM"), series(&r, "DEW")), ((1, 1), (1, 1)), "{r}");
 }

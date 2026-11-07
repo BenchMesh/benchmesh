@@ -42,8 +42,8 @@ channel: <the sensor, 1 or more; the official build: its I2C address>, field: TE
 (temperature, relative humidity, dew point, absolute humidity, pressure), with the label and unit the sensor gives
 the reading (its units setting: e.g. `Environment · Temperature (SHT4x 0x44)` in `°C` / `°F` / `K`,
 `Environment · Dew point (SHT4x 0x44)` in `°F`, `Pressure (BMP280 0x76)` in `hPa` / `inHg` / ...) - added when the recording is created and, for a sensor that appears later, at the next tick.
-When a reading's unit or label changes (the user picks other units, another chip at the address; relative humidity,
-dew point and absolute humidity count as one reading), its series ends and a new series in the new
+When a reading's unit or label changes (the user picks other units, another chip at the address; relative and
+absolute humidity count as one reading, the dew point is a reading of its own), its series ends and a new series in the new
 unit starts, so every series has one unit (the CSV has both columns, e.g. `Environment · Temperature (SHT4x 0x44) [°C]` and
 `[°F]`). Without a sensor nothing is added. These series carry `"locked": true` (every other
 series `false`): `DELETE` answers 409, and the UI offers no removal. The sampler takes their values from the sensor
