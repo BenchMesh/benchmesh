@@ -1,0 +1,9 @@
+#!/bin/sh
+# BenchMesh .deb: forget the udev rules it removed.
+set -e
+if [ "$1" = remove ] || [ "$1" = purge ]; then
+  if command -v udevadm >/dev/null 2>&1; then
+    udevadm control --reload-rules || true
+  fi
+fi
+exit 0

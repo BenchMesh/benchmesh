@@ -1,0 +1,11 @@
+# BenchMesh (installed by its .deb package): lab instruments for the signed-in user.
+# uaccess gives the device to whoever sits at this computer (a desktop session); a computer used
+# only remotely (headless, no session) still needs the group commands of
+# https://benchmesh.online/docs/linux#usb-permissions and #serial-permissions.
+# The number is below 73 so systemd's seat rules apply the tag.
+
+# USBTMC instruments (oscilloscopes, signal generators, ...): the kernel's usbtmc driver
+SUBSYSTEM=="usbmisc", KERNEL=="usbtmc[0-9]*", MODE="0660", TAG+="uaccess"
+
+# USB serial adapters and instruments with a USB serial port (power supplies, meters, loads)
+SUBSYSTEM=="tty", KERNEL=="ttyUSB[0-9]*|ttyACM[0-9]*", TAG+="uaccess"

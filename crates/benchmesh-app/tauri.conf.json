@@ -31,6 +31,15 @@
     "resources": {
       "../../devices/": "devices/",
       "../../frontend/dist/": "ui/"
+    },
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/lib/udev/rules.d/70-benchmesh.rules": "linux/70-benchmesh.rules"
+        },
+        "postInstallScript": "linux/postinst",
+        "postRemoveScript": "linux/postrm"
+      }
     }
   }
 }

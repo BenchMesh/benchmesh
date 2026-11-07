@@ -1,0 +1,8 @@
+#!/bin/sh
+# BenchMesh .deb: apply the udev rules it installed to instruments already plugged in.
+set -e
+if [ "$1" = configure ] && command -v udevadm >/dev/null 2>&1; then
+  udevadm control --reload-rules || true
+  udevadm trigger --action=change --subsystem-match=usbmisc --subsystem-match=tty --subsystem-match=usb || true
+fi
+exit 0

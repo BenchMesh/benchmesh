@@ -161,7 +161,9 @@ port the entry names; an entry with `match` and no path is refused.
 On Windows a USBTMC instrument without a usable driver gets **Install driver** (Instruments drawer):
 the server re-runs its executable elevated (`--install-winusb`, `bm_transport::winusb`) to bind
 Microsoft's in-box WinUSB driver - the one admin prompt Windows requires. A port the OS refuses is explained (`bm_transport::access`,
-message ending " - see <help URL>"): Linux "Permission denied" (`/dev/usbtmcN` belongs to root, serial ports to
+message ending " - see <help URL>"; the `.deb` avoids most of them: it installs `/usr/lib/udev/rules.d/70-benchmesh.rules`,
+`crates/benchmesh-app/linux/`, giving USBTMC nodes and USB serial ports to the signed-in user, `postinst` reloads udev,
+`tests/deb_package.rs` checks it): Linux "Permission denied" (`/dev/usbtmcN` belongs to root, serial ports to
 `dialout`/`uucp`) and macOS 15+ "No route to host" to a LAN instrument (Local Network permission; the app bundle's
 `crates/benchmesh-app/Info.plist` gives the prompt's reason); a serial port another program holds (busy, Windows
 "Access is denied") is named as in use by another program, on every OS. The panel shows the fix (`bench/AccessFix.tsx`):
@@ -324,7 +326,9 @@ npm run test:e2e       # Playwright against a preview build with a mocked API (C
 ## CI and releases
 
 `.github/workflows/README.md`: `ci.yaml` (frontend lint/tests/build, Rust clippy/tests/definition
-validation, transport on Windows; not on macOS), `e2e-tests.yml`. Releases include macOS (services `release.yml` input `macos`, default on). Releases: bump the version (`Cargo.toml`,
+validation, transport on Windows; not on macOS), `e2e-tests.yml`. Releases include macOS (services `release.yml` input `macos`, default on). After publishing, the services workflow
+`packages.yml` brings the release to the BenchMesh APT repository (package `benchmesh`), winget and the Homebrew tap
+(services `docs/PACKAGES.md`). Releases: bump the version (`Cargo.toml`,
 `crates/benchmesh-app/tauri.conf.json`) and refresh the community status snapshot (`scripts/community-status.sh`)
 on `develop`, tag `vX.Y.Z`, push; then the release workflow of
 `BenchMesh/services` builds the draft release here; publish with `gh release edit vX.Y.Z --draft=false -R BenchMesh/benchmesh`.

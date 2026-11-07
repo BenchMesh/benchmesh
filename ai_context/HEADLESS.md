@@ -90,9 +90,10 @@ are not sent from the API reference (Instruments - API, `x-no-try`).
 ## Raspberry Pi
 
 64-bit Raspberry Pi OS on a Pi 4 or 5: use `BenchMesh_<version>_aarch64.AppImage` (needs
-`libfuse2`; it updates itself from the System tab) or install `BenchMesh_<version>_arm64.deb`
-(`sudo apt install ./BenchMesh_*_arm64.deb`; updates need that command again), give the instruments
-to the user (the udev rule / dialout group, https://benchmesh.online/docs/linux), run
+`libfuse2`; it updates itself from the System tab) or install the package `benchmesh` (`sudo apt install
+./BenchMesh_*_arm64.deb`; the official package adds the BenchMesh APT repository, so `sudo apt upgrade`
+brings new versions), give the instruments to the user (the package's udev rules give them only to a
+signed-in desktop user: a computer used remotely needs the groups of https://benchmesh.online/docs/linux), run
 `benchmesh --headless --remote-password '...'` once, then switch **Start with this computer** on
 and run the linger command so it starts at power-on. The release builds ARM64 natively on
 GitHub's ARM runners (official release build); CI builds and tests the desktop app on ARM on every
