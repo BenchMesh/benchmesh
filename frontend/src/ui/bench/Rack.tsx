@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Instrument } from '../types'
 import { InstrumentPanel } from './InstrumentPanel'
 import { BenchLayout, columnsFor, hide, move, PanelRef, setSize, show, spanFor, toggleFold, toggleStacked } from './layout'
 import { getClassDescription } from '../instrumentClasses'
+import { repaintCanvases } from '../kit'
 
 /** Columns that fit the rack's current width. */
 function useColumns(ref: React.RefObject<HTMLElement>) {
@@ -44,6 +45,10 @@ export function Rack({ panels, instruments, registry, layout, onLayout, arrangin
   const [target, setTarget] = useState<string | null>(null)
   const byKey = new Map(panels.map((p) => [p.key, p]))
   const visible = layout.order.filter((k) => byKey.has(k) && !layout.hidden.includes(k) && !detached.includes(k) && !parked.has(byKey.get(k)!.instrumentId))
+  // reordering moves panels in the document: the Linux webview then shows their canvases blank
+  // (a multimeter's dial) until drawn again
+  const order = visible.join('|')
+  useLayoutEffect(() => { repaintCanvases() }, [order])
   const hidden = layout.hidden.filter((k) => byKey.has(k))
   const label = (k: string) => {
     const p = byKey.get(k)!

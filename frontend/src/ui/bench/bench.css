@@ -3,6 +3,10 @@
    colour is a kit token, so the shell follows the active skin (see kit.css). */
 
 html, body { background: var(--kit-ground); }
+/* an app, not a page: pressing and dragging across the bench selects nothing; fields and what users
+   copy (consoles, logs, API responses) stay selectable */
+html, body { -webkit-user-select: none; user-select: none; }
+input, textarea, [contenteditable], pre, code, .wire-console__log, .auto-log, .logs-panel__list { -webkit-user-select: text; user-select: text; }
 
 /* the window never scrolls: the head (title bar + top bar) and the recorder dock are fixed rows,
    only .bench-body (parking strip + rack) scrolls - its scrollbar starts below the head */

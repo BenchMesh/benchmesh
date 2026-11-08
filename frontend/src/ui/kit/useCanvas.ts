@@ -1,6 +1,18 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useSkin } from './skin'
 
+/** The paint of every mounted kit canvas, for `repaintCanvases`. */
+const painters = new Set<() => void>()
+
+/**
+ * Draw every mounted kit canvas again. Call after canvases were moved in the document (panels
+ * reordered): WebKitGTK, the Linux app's webview, then stops showing a moved canvas although its
+ * drawing is kept, and only drawing on it again brings the picture back.
+ */
+export function repaintCanvases() {
+  painters.forEach((paint) => paint())
+}
+
 export type Draw = (ctx: CanvasRenderingContext2D, w: number, h: number, el: HTMLCanvasElement) => void
 
 /** Kit colour token, read from the canvas element so the skin stays in CSS. */
@@ -54,6 +66,11 @@ export function useCanvas(draw: Draw, deps: unknown[]) {
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- callers pass what their drawing depends on
   useLayoutEffect(paint, [...deps, skin])
+
+  useEffect(() => {
+    painters.add(paint)
+    return () => { painters.delete(paint) }
+  }, [])
 
   useEffect(() => {
     const el = ref.current
