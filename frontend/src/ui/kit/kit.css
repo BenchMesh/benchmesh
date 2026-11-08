@@ -211,6 +211,11 @@
   font: 700 .68rem/1 var(--kit-font-num); letter-spacing: .12em; color: var(--kit-glass-ink-3);
   align-self: start; padding-top: 4px;
 }
+.kit-sym { display: inline-flex; align-items: baseline; gap: .16cap; letter-spacing: 0; white-space: nowrap; }
+.kit-sym__mark { height: 1cap; flex: none; overflow: visible; }
+.kit-sym__small { font-size: .66em; }
+/* a mark alone is 1.4 cap heights, centred on the letters' middle: it hangs below the baseline */
+.kit-sym--alone .kit-sym__mark { height: 1.4cap; margin-bottom: -.2cap; }
 .kit-readout__num { height: var(--rh); min-width: 0; }
 .kit-readout__unit {
   font: 700 1rem/1 var(--kit-font-num); color: var(--kit-glass-ink); min-width: 2.4ch; padding-bottom: 3px; white-space: nowrap;

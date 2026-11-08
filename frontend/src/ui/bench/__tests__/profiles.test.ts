@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import fixtures from './bench-fixtures.json'
-import { psuProfile, ellProfile, dmmProfile, awgProfile, oscProfile, setterMap, modeGlyph, displayDigits } from '../profiles'
+import { psuProfile, ellProfile, dmmProfile, awgProfile, oscProfile, setterMap, modeSymbol, displayDigits } from '../profiles'
 
 const fx = (key: keyof typeof fixtures) => {
   const f = fixtures[key] as { features: any; methods: any[] }
@@ -57,6 +57,8 @@ describe('DMM profile', () => {
     const p = dmmProfile(...fx('owon-spm3103:DMM'))
     expect(p.modes.map((m) => m.key)).toEqual(['VOLT_DC', 'VOLT_AC', 'CURR_DC', 'CURR_AC', 'RES', 'CONT', 'DIOD', 'CAP'])
     expect(p.modes.map((m) => m.glyph)).toEqual(['V⎓', 'V~', 'A⎓', 'A~', 'Ω', '·)))', '→|', '⊣⊢'])
+    expect(p.modes.find((m) => m.key === 'VOLT_DC')?.symbol).toEqual([{ text: 'V' }, { mark: 'dc' }])
+    expect(p.modes.filter((m) => ['CONT', 'DIOD', 'CAP'].includes(m.key)).map((m) => m.symbol)).toEqual([[{ mark: 'beep' }], [{ mark: 'diode' }], [{ mark: 'cap' }]])
     expect(p.ranges.VOLT_DC.map((r) => r.value)).toEqual(['AUTO', '200E-3', '2', '20', '200', '1000'])
     expect(p.canRange).toBe(true)
     expect(p.rates).toEqual([])
@@ -76,7 +78,7 @@ describe('DMM profile', () => {
     expect(dmmProfile({ counts: 1200000 }, {}).counts).toBe(7)
   })
   it('falls back to a short key for unknown functions', () => {
-    expect(modeGlyph('WEIRD', {})).toBe('WEIR')
+    expect(modeSymbol('WEIRD', {})).toEqual([{ text: 'WEIR' }])
   })
 })
 

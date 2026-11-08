@@ -10,12 +10,13 @@ import { NOT_CONFIRMED, useConfirmation } from './confirm'
  * the quantity (volt, amp, watt, meas) so skins that colour-code readouts can do so.
  */
 export function Readout({ tag, text, unit, size = 'big', history, label, tone }: {
-  tag: string; text: string; unit: string; size?: 'big' | 'mid' | 'small'; history?: number[]; label?: string; tone?: Tone
+  /** text, or a `MeterSymbol` (then pass `label`) */
+  tag: React.ReactNode; text: string; unit: string; size?: 'big' | 'mid' | 'small'; history?: number[]; label?: string; tone?: Tone
 }) {
   return (
     <div className={`kit-readout kit-readout--${size}`}>
       <span className="kit-readout__tag">{tag}</span>
-      <div className="kit-readout__num"><SegmentDisplay text={text} label={label ?? tag} tone={tone} /></div>
+      <div className="kit-readout__num"><SegmentDisplay text={text} label={label ?? (typeof tag === 'string' ? tag : undefined)} tone={tone} /></div>
       <span className="kit-readout__unit">{unit}</span>
       {history && <Sparkline data={history} tone={tone} />}
     </div>

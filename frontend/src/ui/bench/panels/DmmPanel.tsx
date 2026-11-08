@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { Readout, Annunciators, RotaryDial, Selector, MicroSwitch, Bargraph, prefixed, siNumber } from '../../kit'
+import { Readout, Annunciators, RotaryDial, MeterSymbol, Selector, MicroSwitch, Bargraph, prefixed, siNumber } from '../../kit'
 import { DmmProfile } from '../profiles'
 import { ChannelApi, useAction } from '../api'
 import { Recordable } from '../../recording/signal'
@@ -107,12 +107,12 @@ export function DmmPanel({ status, profile, api, online }: {
   return (
     <div className="bench-dmm">
       <RotaryDial label="Function" disabled={!online || applying} busy={applying}
-        options={profile.modes.map((m) => ({ value: m.key, label: m.glyph, title: m.name }))}
+        options={profile.modes.map((m) => ({ value: m.key, label: m.glyph, symbol: m.symbol, title: m.name }))}
         value={mode} onChange={(k) => apply(api.set('mode', k))} />
       <div className="bench-dmm__main">
         <div className="kit-glass">
           <Recordable field="MEAS" unit={unit}>
-            <Readout tag={info?.glyph ?? mode} text={main.text} unit={isTemp ? unit : `${main.prefix}${unit}`} label={info?.name ?? 'Reading'} tone="meas" />
+            <Readout tag={info ? <MeterSymbol parts={info.symbol} label={info.name} /> : mode} text={main.text} unit={isTemp ? unit : `${main.prefix}${unit}`} label={info?.name ?? 'Reading'} tone="meas" />
           </Recordable>
           <Bargraph tone="meas" label="Reading as a fraction of the range" fraction={fs && shown != null ? Math.abs(shown) / fs : overload ? 1 : 0} marks={['0', fsText]} />
           <div className="kit-stats" aria-label="Statistics">

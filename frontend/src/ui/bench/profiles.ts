@@ -8,6 +8,7 @@ import { decimalsFromFormat, intDigitsFor } from '../kit/format'
 import type { DigitSpec } from '../kit/digitModel'
 import { WAVE_SHAPES } from '../kit/WavePreview'
 import { siText } from '../kit/scope'
+import { symbolText, type SymbolPart } from '../kit/meterSymbol'
 
 export interface ValueSpec { type: string; min?: number; max?: number; format?: string; unit?: string; values?: string[] }
 export interface Setter { value?: ValueSpec; energizes?: boolean }
@@ -106,22 +107,22 @@ export function displayDigits(counts: unknown): number {
   return isNum(counts) && counts > 0 ? (counts > 9 ? Math.ceil(Math.log10(counts + 1)) : counts) : 5
 }
 
-/** Dial label for a meter function. */
-export function modeGlyph(key: string, m: { unit?: string; note?: string }): string {
+/** Dial symbol for a meter function: letters and vector marks (`kit/meterSymbol`). */
+export function modeSymbol(key: string, m: { unit?: string; note?: string }): SymbolPart[] {
   const k = key.toUpperCase()
-  if (k.startsWith('CONT')) return '·)))'
-  if (k.startsWith('DIOD')) return '→|'
-  if (k.startsWith('TEMP')) return '°'
-  if (k.startsWith('PER')) return 'PER'
-  const ac = m.note === 'AC'
+  if (k.startsWith('CONT')) return [{ mark: 'beep' }]
+  if (k.startsWith('DIOD')) return [{ mark: 'diode' }]
+  if (k.startsWith('TEMP')) return [{ mark: 'temp' }]
+  if (k.startsWith('PER')) return [{ text: 'PER' }]
+  const current: SymbolPart = { mark: m.note === 'AC' ? 'ac' : 'dc' }
   switch (m.unit) {
-    case 'V': return ac ? 'V~' : 'V⎓'
-    case 'A': return ac ? 'A~' : 'A⎓'
-    case 'Ω': return m.note === '4W' ? 'Ω4W' : 'Ω'
-    case 'F': return '⊣⊢'
-    case 'Hz': return 'Hz'
+    case 'V': return [{ text: 'V' }, current]
+    case 'A': return [{ text: 'A' }, current]
+    case 'Ω': return m.note === '4W' ? [{ text: 'Ω' }, { text: '4W', small: true }] : [{ text: 'Ω' }]
+    case 'F': return [{ mark: 'cap' }]
+    case 'Hz': return [{ text: 'Hz' }]
   }
-  return k.slice(0, 4)
+  return [{ text: k.slice(0, 4) }]
 }
 
 // Physical dial order: voltage, current, resistance family, then the rest.
@@ -136,7 +137,7 @@ export interface Option { value: string; display: string }
 
 export function dmmProfile(features: any, setters: Setters) {
   const modes = Object.entries<any>(features?.modes ?? {})
-    .map(([key, m]) => ({ key, glyph: modeGlyph(key, m ?? {}), name: [m?.ui_name ?? key, m?.note === '4W' ? '4-wire' : ''].filter(Boolean).join(' '), unit: m?.unit ?? '' }))
+    .map(([key, m]) => ({ key, symbol: modeSymbol(key, m ?? {}), glyph: symbolText(modeSymbol(key, m ?? {})), name: [m?.ui_name ?? key, m?.note === '4W' ? '4-wire' : ''].filter(Boolean).join(' '), unit: m?.unit ?? '' }))
     .sort((a, b) => dmmRank(a.key) - dmmRank(b.key))
   const R = features?.RANGe ?? {}
   const ranges: Record<string, Option[]> = {}

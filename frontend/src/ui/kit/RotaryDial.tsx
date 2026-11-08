@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { useCanvas, token } from './useCanvas'
 import { NOT_CONFIRMED, useConfirmation } from './confirm'
 import { useFocusedWheel } from './useFocusedWheel'
+import { drawSymbol, type SymbolPart } from './meterSymbol'
 
-export interface DialOption { value: string; label: string; title?: string }
+/** `symbol`: drawn instead of the label text (letters and marks on the font's cap height). */
+export interface DialOption { value: string; label: string; title?: string; symbol?: SymbolPart[] }
 
 const A0 = Math.PI * 0.8
 const A1 = Math.PI * 2.2
@@ -50,13 +52,11 @@ export function RotaryDial({ options, value, onChange, label, disabled, busy }: 
     const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2
     const ink = token(el, '--kit-ink'), ink2 = token(el, '--kit-ink-2'), ink3 = token(el, '--kit-ink-3')
     const accent = token(el, '--kit-accent'), ctl = token(el, '--kit-ctl'), hi = token(el, '--kit-ctl-hi'), edge = token(el, '--kit-panel-edge')
-    ctx.font = `700 11px ${token(el, '--kit-font-num')}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
+    const font = token(el, '--kit-font-num')
     options.forEach((o, i) => {
       const a = angleOf(i, n)
       ctx.fillStyle = i === idx ? accent : ink2
-      ctx.fillText(o.label, cx + Math.cos(a) * (R - 15), cy + Math.sin(a) * (R - 15))
+      drawSymbol(ctx, o.symbol ?? [{ text: o.label }], cx + Math.cos(a) * (R - 15), cy + Math.sin(a) * (R - 15), 12, font)
       if (i === targetIdx && mark) {
         ctx.fillStyle = confirm.state === 'unconfirmed' ? token(el, '--kit-alert') : accent
         ctx.beginPath()
@@ -96,7 +96,7 @@ export function RotaryDial({ options, value, onChange, label, disabled, busy }: 
     ctx.closePath()
     ctx.fill()
     ctx.restore()
-  }, [options.map((o) => o.label).join('|'), idx, disabled, targetIdx, mark, confirm.state])
+  }, [options.map((o) => o.symbol ? JSON.stringify(o.symbol) : o.label).join('|'), idx, disabled, targetIdx, mark, confirm.state])
 
   const pick = (i: number) => {
     if (disabled || !n) return
