@@ -3,7 +3,8 @@
  * (REC mark, name, elapsed time, series count) and "+ New recording". Expanded: the selected
  * recording's live chart (last 10 minutes or all; or a view a distribution adds, `views.tsx`), its
  * series legend, Pause/Resume and Stop.
- * Expanded state, height and selection are remembered per browser.
+ * Expanded state, height and selection are remembered per browser, hidden series per recording
+ * (`hiddenSeries.ts`).
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Selector } from '../kit'
@@ -14,6 +15,7 @@ import { RecordingsApi, useRecordings } from './RecordingsProvider'
 import { useViewOnly } from '../remote/RemoteProvider'
 import { isActive, Recording, RecordingData } from './types'
 import { RecordingPlot, useRecordingView, ViewSwitch } from './views'
+import { useHiddenSeries } from './hiddenSeries'
 import './recording.css'
 
 export const DOCK_STORAGE_KEY = 'benchmesh:recorder-dock'
@@ -141,7 +143,7 @@ function useWindowData(rec: RecordingsApi, recording: Recording, all: boolean) {
 
 function DockRecording({ rec, recording, now }: { rec: RecordingsApi; recording: Recording; now: number }) {
   const [all, setAll] = useState(false)
-  const [hidden, setHidden] = useState<Set<number>>(new Set())
+  const [hidden, toggleHidden] = useHiddenSeries(recording.id)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [removing, setRemoving] = useState<Set<number>>(new Set())
@@ -186,7 +188,7 @@ function DockRecording({ rec, recording, now }: { rec: RecordingsApi; recording:
             data={{ recording, series, hidden, min, max, live: true }} />
         </div>
         <SeriesLegend series={series} hidden={hidden} removing={removing}
-          onToggle={(id) => setHidden((h) => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n })}
+          onToggle={toggleHidden}
           onRemove={(id) => {
             setRemoving((r) => new Set(r).add(id))
             act(rec.removeSeries(recording.id, id)).finally(() => setRemoving((r) => { const n = new Set(r); n.delete(id); return n }))

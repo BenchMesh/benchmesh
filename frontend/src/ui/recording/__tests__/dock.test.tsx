@@ -3,10 +3,12 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { RecordingsProvider } from '../RecordingsProvider'
 import { DOCK_STORAGE_KEY, RecorderDock, elapsedOf, loadDockPrefs } from '../RecorderDock'
+import { resetHiddenSeries } from '../hiddenSeries'
 import { fakeClient, MockSocket, recording, series, T0 } from './fakes'
 
 beforeEach(() => {
   localStorage.clear()
+  resetHiddenSeries()
   MockSocket.sockets = []
   ;(globalThis as any).WebSocket = MockSocket
 })
@@ -98,6 +100,22 @@ describe('RecorderDock', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Remove Tenma · VOUT' })) })
     expect(client.removeSeries).toHaveBeenCalledWith(1, 11)
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Remove Tenma · VOUT' })).toBeNull())
+  })
+
+  it('a hidden series stays hidden when the dock is collapsed and opened again', async () => {
+    const client = fakeClient([recording({ id: 1, name: 'Ramp', series: [
+      series({ id: 11, label: 'Tenma · VOUT' }), series({ id: 12, device_id: 'environment', label: 'Environment · Temperature', unit: '°C' }),
+    ] })])
+    localStorage.setItem(DOCK_STORAGE_KEY, JSON.stringify({ expanded: true, height: 240, selected: 1 }))
+    renderDock(client)
+    const toggle = () => screen.getByRole('button', { name: /^Environment · Temperature/ })
+    fireEvent.click(await waitFor(toggle))
+    expect(toggle()).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse recorder' }))
+    expect(screen.queryByRole('button', { name: /^Environment · Temperature/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Expand recorder' }))
+    expect(await waitFor(toggle)).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: /^Tenma · VOUT/ })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('collapses and expands, remembering it', async () => {

@@ -122,7 +122,9 @@ Server → client JSON messages:
   samples), open a recording's full chart (zoom/pan, decimated data from `/data`, re-queried on
   zoom), rename/describe, export CSV, delete (with confirmation in the UI).
 - **Chart**: time x-axis (local time labels); **one y-axis per series** in the series' colour
-  (so 0-5 V and 0-120 V share one chart legibly), alternating left/right; legend toggles series;
+  (so 0-5 V and 0-120 V share one chart legibly), alternating left/right; legend toggles series
+  (hidden series remembered per recording and browser, the same in the dock and the drawer,
+  `benchmesh:recording-hidden`, `frontend/src/ui/recording/hiddenSeries.ts`);
   tooltip shows all values at a time; live mode follows the newest data (last 10 min by default,
   "All" button). Series colours from a skin-aware palette (tokens).
 - **Other views**: a distribution may add ways to draw a recording (`extensions.recordingViews`,

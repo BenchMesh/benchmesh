@@ -13,6 +13,7 @@ import { elapsedOf } from './RecorderDock'
 import { RecordingsApi, useRecordings } from './RecordingsProvider'
 import { isActive, Recording, RecordingData } from './types'
 import { RecordingPlot, useRecordingView, ViewSwitch } from './views'
+import { useHiddenSeries } from './hiddenSeries'
 import './recording.css'
 
 const STATE_TEXT: Record<string, string> = { recording: 'Recording', paused: 'Paused', stopped: 'Stopped' }
@@ -88,7 +89,7 @@ function useHistoryData(rec: RecordingsApi, id: number, reload: number) {
 function RecordingView({ rec, recording, onBack }: { rec: RecordingsApi; recording: Recording; onBack: () => void }) {
   const [reload, setReload] = useState(0)
   const [editing, setEditing] = useState(false)
-  const [hidden, setHidden] = useState<Set<number>>(new Set())
+  const [hidden, toggleHidden] = useHiddenSeries(recording.id)
   const [actionError, setActionError] = useState<string | null>(null)
   const theme = useChartTheme()
   const choice = useRecordingView()
@@ -141,7 +142,7 @@ function RecordingView({ rec, recording, onBack }: { rec: RecordingsApi; recordi
           data={{ recording, series, hidden, live: false, onRange: (from, to) => setZoom({ from, to }) }} />
       </div>
       <SeriesLegend series={series} hidden={hidden}
-        onToggle={(id) => setHidden((h) => { const n = new Set(h); if (n.has(id)) n.delete(id); else n.add(id); return n })} />
+        onToggle={toggleHidden} />
     </div>
   )
 }
