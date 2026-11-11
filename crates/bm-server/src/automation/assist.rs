@@ -194,7 +194,9 @@ async fn complete(s: &Settings, system: &str, user: &str) -> Result<Value, Strin
             "model": model, "max_tokens": 16000, "system": system,
             "messages": [{"role": "user", "content": user}],
             "tools": [{"name": "submit_flow", "description": "Submit the assembled flow.", "input_schema": tool_schema()}],
-            "tool_choice": {"type": "tool", "name": "submit_flow"},
+            // `auto`, never a forced tool: current models (Claude Sonnet 5.5, Opus 5.5, Fable 5.1+)
+            // refuse `tool` / `any` with a 400; the system prompt asks for `submit_flow` only
+            "tool_choice": {"type": "auto"},
         });
         let r = http.post(format!("{base}/messages")).header("anthropic-version", "2023-06-01").header("x-api-key", key.unwrap_or_default()).json(&body);
         (r, true)
@@ -231,10 +233,24 @@ async fn complete(s: &Settings, system: &str, user: &str) -> Result<Value, Strin
             _ => None,
         }
     };
-    input.ok_or_else(|| {
-        let said = if anthropic { v["content"][0]["text"].as_str() } else { v["choices"][0]["message"]["content"].as_str() };
-        format!("the model did not submit a flow{}", said.map(|t| format!(": {}", t.chars().take(400).collect::<String>())).unwrap_or_default())
-    })
+    input.ok_or_else(|| no_flow(&v, anthropic))
+}
+
+/// Why an answer carries no `submit_flow` call: cut off, declined, or what the model said instead.
+fn no_flow(v: &Value, anthropic: bool) -> String {
+    let stop = if anthropic { v["stop_reason"].as_str() } else { v["choices"][0]["finish_reason"].as_str() };
+    match stop {
+        Some("max_tokens") | Some("length") => return "the model ran out of output tokens before submitting a flow - describe a smaller flow or split it".into(),
+        Some("refusal") | Some("content_filter") => return "the provider declined this request".into(),
+        _ => {}
+    }
+    let said = if anthropic {
+        // the first text block: a thinking block may come before it
+        v["content"].as_array().and_then(|c| c.iter().find(|b| b["type"] == "text")).and_then(|b| b["text"].as_str())
+    } else {
+        v["choices"][0]["message"]["content"].as_str()
+    };
+    format!("the model did not submit a flow{}", said.map(|t| format!(": {}", t.chars().take(400).collect::<String>())).unwrap_or_default())
 }
 
 /// The model's answer: the flow may arrive as an object or as a JSON string.
@@ -366,7 +382,8 @@ mod tests {
         assert_eq!(r.explanation, "holds 5 V");
         assert!(!flow::has_errors(&r.issues));
         let req = &seen.lock().unwrap()[0];
-        assert_eq!(req["tool_choice"]["name"], "submit_flow");
+        assert_eq!(req["tool_choice"], json!({"type": "auto"}), "current Claude models refuse a forced tool choice");
+        assert_eq!(req["tools"][0]["name"], "submit_flow");
         let system = req["system"].as_str().unwrap();
         assert!(system.contains("benchmesh.flow/v1") && system.contains("\"load\""), "the prompt carries the format and the bench");
     }
@@ -389,6 +406,16 @@ mod tests {
         let mut s = Settings { provider: "openai".into(), ..Default::default() };
         s.models.insert("openai".into(), "gpt".into());
         assert!(assist(&s, &vocab(), "x", None).await.unwrap_err().contains("no API key"));
+    }
+
+    #[test]
+    fn an_answer_without_a_flow_is_explained() {
+        let thought = json!({"stop_reason": "end_turn", "content": [{"type": "thinking", "thinking": ""}, {"type": "text", "text": "Which load?"}]});
+        assert_eq!(no_flow(&thought, true), "the model did not submit a flow: Which load?", "the text block, not the thinking before it");
+        assert!(no_flow(&json!({"stop_reason": "max_tokens", "content": []}), true).contains("ran out of output tokens"));
+        assert!(no_flow(&json!({"stop_reason": "refusal", "content": []}), true).contains("declined"));
+        assert!(no_flow(&json!({"choices": [{"finish_reason": "length", "message": {}}]}), false).contains("ran out of output tokens"));
+        assert_eq!(no_flow(&json!({"choices": [{"message": {"content": "hi"}}]}), false), "the model did not submit a flow: hi");
     }
 
     #[tokio::test]

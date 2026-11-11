@@ -129,7 +129,7 @@ Flows are files `<data dir>/flows/<id>.json`; settings `<data dir>/automation.js
 
 - Server-side: the key never reaches the web page after it is saved (only a hint `sk-…a1b2`).
   The UI calls `POST /automation/assist`; the server calls the provider (rustls, 120 s timeout).
-- Providers: `anthropic` (Messages API, forced tool `submit_flow`), `openai` and `openrouter`
+- Providers: `anthropic` (Messages API, tool `submit_flow` with `tool_choice: auto` - current Claude models refuse a forced tool - and the system prompt asking for that tool only), `openai` and `openrouter`
   (Chat Completions, forced function `submit_flow`), `custom` (OpenAI-compatible `base_url`, e.g.
   `http://localhost:11434/v1` for Ollama).
 - Prompt: role and rules, the flow format (this section, condensed), the vocabulary of this
