@@ -9,6 +9,7 @@
  * - Annunciators: state flags, always present, lit when active.
  * - RotaryDial / Selector: mutually exclusive functions, modes and ranges.
  * - Bargraph / Sparkline: fraction of range, recent history.
+ * - Dropdowns: plain `<select>` elements; `SelectPopup` draws their list in the skin.
  * - ContextMenu: secondary actions on a thing (right-click / context-menu key), e.g. recording a reading.
  * - Confirmation (`confirm.ts`): after a change is sent, the control pulses (`data-confirm="waiting"`)
  *   until the instrument reports the new value; after 6 s without it a red dot marks it "unconfirmed".
@@ -42,6 +43,7 @@ export { brandSvg, BRAND_ON_DARK, BRAND_ON_LIGHT } from './brand'
 export type { BrandColours } from './brand'
 export { step125, screenDivs, tracePoints, siText } from './scope'
 export { ContextMenu, useContextMenu, clampToViewport } from './ContextMenu'
+export { SelectPopups, installSelectPopups } from './SelectPopup'
 export type { MenuItem } from './ContextMenu'
 export { digitModel } from './digitModel'
 export type { DigitSpec } from './digitModel'

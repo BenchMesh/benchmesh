@@ -431,3 +431,11 @@ textarea.kit-input.kit-input { resize: vertical; min-height: 3.2em; font-family:
   [data-confirm="waiting"], [data-confirm="waiting"] *, [data-confirm="waiting"]::before { animation: none !important; }
   .kit-stepper[data-confirm="waiting"] .kit-stepper__val, .kit-digits[data-confirm="waiting"] .kit-digits__d { color: var(--kit-warn); }
 }
+
+/* ---- dropdown list (SelectPopup.tsx: the list of a <select>, drawn in the skin) ------- */
+.kit-select-list { overflow-y: auto; max-width: calc(100vw - 8px); box-sizing: border-box; overscroll-behavior: contain; }
+.kit-select-list .kit-menu__item { padding-top: 5px; padding-bottom: 5px; }
+.kit-select-list .kit-menu__item[aria-selected="true"] { color: var(--kit-accent); }
+.kit-select-list__group {
+  padding: 8px 10px 3px; font: 600 .66rem/1.2 var(--kit-font-label); letter-spacing: .1em; text-transform: uppercase; color: var(--kit-ink-3);
+}

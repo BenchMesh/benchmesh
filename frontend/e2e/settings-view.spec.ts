@@ -48,6 +48,25 @@ test.describe('History retention setting', () => {
     await expect(drawer.getByText(/older than 1 day will be automatically removed/)).toBeVisible();
   });
 
+  test('a press opens the dropdown list in the skin, not the system one, and stays in the drawer', async ({ mockPage }) => {
+    const drawer = await openMiscellaneous(mockPage);
+    const select = drawer.getByTestId('history-retention-dropdown');
+    await select.click();
+    const list = mockPage.getByRole('listbox', { name: /History Retention/ });
+    await expect(list).toBeVisible();
+    await expect(list).toHaveClass(/kit-menu/);
+    await expect(list.getByRole('option', { name: /3 days/ })).toHaveAttribute('aria-selected', 'true');
+    await mockPage.keyboard.press('Escape');
+    await expect(list).toBeHidden();
+    await expect(drawer).toBeVisible(); // Escape closed the list only
+
+    await select.click();
+    await list.getByRole('option', { name: /5 days/ }).click();
+    await expect(list).toBeHidden();
+    await expect(select).toHaveValue('5');
+    await expect(drawer.getByText(/older than 5 days will be automatically removed/)).toBeVisible();
+  });
+
   test('is restored after a reload', async ({ mockPage }) => {
     await mockPage.evaluate(() => localStorage.setItem('benchmesh:historyRetentionDays', '5'));
     await mockPage.reload();
