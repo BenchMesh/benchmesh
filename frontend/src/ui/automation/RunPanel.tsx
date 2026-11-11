@@ -5,6 +5,7 @@
  * a big Abort (Escape in this panel aborts too).
  */
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { ApiError, errorText } from './client'
 import { paramValues } from './flowModel'
 import { abortLabel, STATE_TEXT, useRun } from './RunProvider'
@@ -131,7 +132,10 @@ export function RunPanel({ doc, flowId, dirty, blocked, onHighlight, onOpenRecor
         </ol>
       )}
 
-      {arm && (
+      {/* drawn at the end of <body>, not inside the drawer: the Run panel's column is sticky and
+          scrolls (overflow: auto), and WebKitGTK (the Linux app) then left the fixed dialog box out
+          while its scrim still covered the window - the app looked hung */}
+      {arm && createPortal(
         <div className="bench-modal" role="dialog" aria-modal="true" aria-label="Arm the run"
           onKeyDown={(e) => { if (e.key === 'Escape') e.stopPropagation() }}>
           {/* only Cancel closes it (a modal: a press beside it or Escape does nothing; Escape must not
@@ -151,7 +155,8 @@ export function RunPanel({ doc, flowId, dirty, blocked, onHighlight, onOpenRecor
               <button type="button" className="bench-btn bench-btn--primary" disabled={starting} onClick={() => start({ ...arm.req, arm: true })}>⚡ Arm and run</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   )

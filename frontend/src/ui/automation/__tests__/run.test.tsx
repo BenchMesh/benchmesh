@@ -39,6 +39,8 @@ describe('run panel', () => {
     })
     fireEvent.click(await openRamp())
     const dialog = await screen.findByRole('dialog', { name: 'Arm the run' })
+    // a child of <body>, outside the drawer's sticky scrolling column (WebKitGTK left it out there)
+    expect(dialog.parentElement).toBe(document.body)
     expect(within(dialog).getByText(/CH1 · output/)).toBeTruthy()
     expect(within(dialog).getByText('setup[0]')).toBeTruthy()
     expect(posts[0]).toEqual({ flow_id: 'ramp', params: { target: 5 } })
